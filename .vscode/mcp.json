@@ -1,0 +1,14 @@
+{
+  "inputs": [],
+  "servers": {
+    "MCPServer": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "./MCP-NewsInsight.Server/MCP-NewsInsight.Server.csproj"
+      ]
+    }
+  }
+}

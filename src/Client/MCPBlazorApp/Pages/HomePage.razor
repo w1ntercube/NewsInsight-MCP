@@ -1,0 +1,67 @@
+@page "/"
+@using Microsoft.AspNetCore.Components
+@using NewsInsight.Shared.Models.DTOs
+
+<h3 class="page-title">欢迎来到 News Insight</h3>
+<p class="page-description">请选择一个选项继续操作：</p>
+
+<div class="container">
+    <div class="card-group">
+        <!-- News List Link -->
+        <div class="card">
+            <button class="card-body card-button" @onclick="NavigateToNewsPage">
+                <h5 class="card-title">新闻列表</h5>
+                <p class="card-text">查看所有新闻，获取更多信息</p>
+            </button>
+        </div>
+
+        <!-- News Browse Records Link -->
+        <div class="card">
+            <button class="card-body card-button" @onclick="NavigateToNewsBrowseRecordsPage">
+                <h5 class="card-title">新闻浏览记录</h5>
+                <p class="card-text">查看用户过去的新闻浏览记录</p>
+            </button>
+        </div>
+
+        <!-- Category Heatmap Link -->
+        <div class="card">
+            <button class="card-body card-button" @onclick="NavigateToCategoryHeatmapPage">
+                <h5 class="card-title">类别热度图</h5>
+                <p class="card-text">分析新闻类别的热度数据</p>
+            </button>
+        </div>
+
+        <!-- User Interest Distribution Link -->
+        <div class="card">
+            <button class="card-body card-button" @onclick="NavigateToUserInterestDistributionPage">
+                <h5 class="card-title">用户兴趣分布</h5>
+                <p class="card-text">查看用户的兴趣分布数据</p>
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Methods to navigate to respective pages
+    private void NavigateToNewsPage()
+    {
+        NavigationManager.NavigateTo("/newspage"); // Navigate to News Page
+    }
+
+    private void NavigateToNewsBrowseRecordsPage()
+    {
+        NavigationManager.NavigateTo("/newsbrowserecords"); // Navigate to News Browse Records Page
+    }
+
+    private void NavigateToCategoryHeatmapPage()
+    {
+        NavigationManager.NavigateTo("/categoryheatmap"); // Navigate to Category Heatmap Page
+    }
+
+    private void NavigateToUserInterestDistributionPage()
+    {
+        NavigationManager.NavigateTo("/userinterestdistribution"); // Navigate to User Interest Distribution Page
+    }
+
+    [Inject] private NavigationManager NavigationManager { get; set; }
+}

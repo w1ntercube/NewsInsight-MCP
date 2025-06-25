@@ -1,0 +1,221 @@
+/* 基本页面样式 */
+.page-title {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-top: 20px;
+    color: #2c3e50;
+}
+
+.page-description {
+    text-align: center;
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+    color: #7f8c8d;
+}
+
+/* 返回按钮样式 */
+.back-button {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-bottom: 20px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.back-button:hover {
+    background-color: #2980b9;
+}
+
+/* Tab按钮样式 */
+.tab-group {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    background-color: #f1f1f1;
+    color: #2c3e50;
+    padding: 10px 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 0 10px;
+    transition: background-color 0.3s ease;
+}
+
+.tab-button.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.tab-button:hover {
+    background-color: #e0e0e0;
+}
+
+/* 卡片式布局新闻详情样式 */
+.news-list {
+    margin-top: 20px;
+}
+
+.news-table,
+.trend-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.news-table th,
+.news-table td,
+.trend-table th,
+.trend-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.pagination {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.pagination-button {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.pagination-button:hover {
+    background-color: #2980b9;
+}
+
+.pagination-button:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+/* 新闻详情 */
+.news-detail-card {
+    border: 1px solid #ecf0f1;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.news-detail-card h4 {
+    font-size: 1.8rem;
+    color: #34495e;
+}
+
+.detail-row {
+    margin-bottom: 10px;
+}
+
+.detail-row .label {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.content-section {
+    margin-top: 20px;
+}
+
+.content-section h5 {
+    font-size: 1.2rem;
+    color: #3498db;
+}
+
+/* 筛选控件样式 */
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.filter-group {
+    margin: 10px 0;
+}
+
+.apply-button {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.apply-button:hover {
+    background-color: #2980b9;
+}
+
+/* 热度图表样式 */
+.heatmap-result {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.heatmap-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.heatmap-table th,
+.heatmap-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+/* 分布结果表格样式 */
+.distribution-result {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.distribution-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.distribution-table th,
+.distribution-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .filters {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .pagination-button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+

@@ -1,0 +1,18 @@
+﻿@using Microsoft.AspNetCore.Components
+@using MCPBlazorApp.Pages
+@namespace MCPBlazorApp
+
+<Router AppAssembly="@typeof(App).Assembly">
+
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="typeof(MainLayout)" />
+    </Found>
+    
+    <NotFound>
+        <h3>Page not found!</h3>
+    </NotFound>
+
+    <Navigating>
+        <h3>Loading...</h3>
+    </Navigating>
+</Router>

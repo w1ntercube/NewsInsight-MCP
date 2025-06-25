@@ -1,0 +1,276 @@
+@page "/newsbrowserecords"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@using NewsInsight.Shared.Models.DTOs
+@inject NavigationManager NavigationManager
+
+<h3 class="page-title">新闻浏览记录</h3>
+
+<button class="back-button" @onclick="GoBackToHomePage">返回主页</button>
+
+<!-- Tab navigation -->
+<div class="tab-group">
+    <button class="@(activeTab == "browse" ? "active" : "")" @onclick="@(() => SwitchTab("browse"))">
+        浏览新闻记录
+    </button>
+    <button class="@(activeTab == "trend" ? "active" : "")" @onclick="@(() => SwitchTab("trend"))">
+        用户日常趋势
+    </button>
+</div>
+
+@if (activeTab == "browse")
+{
+    <div class="news-browse">
+        <div class="filters">
+            <div class="filter-group">
+                <label>用户ID：</label>
+                <input type="number" @bind="userId" />
+            </div>
+
+            <div class="filter-group">
+                <label>开始日期：</label>
+                <input type="date" @bind="startDate" />
+            </div>
+
+            <div class="filter-group">
+                <label>结束日期：</label>
+                <input type="date" @bind="endDate" />
+            </div>
+
+            <div class="filter-group">
+                <button class="apply-button" @onclick="ApplyBrowseFilters">应用筛选</button>
+            </div>
+        </div>
+
+        <div class="news-list">
+            <h4>浏览记录 (第 @pageNumber 页)</h4>
+
+            @if (isLoading)
+            {
+                <p>加载记录中...</p>
+            }
+            else if (browseRecords == null || !browseRecords.Any())
+            {
+                <p>没有找到记录，请尝试不同的筛选条件。</p>
+            }
+            else
+            {
+                <table class="news-table">
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>类别</th>
+                            <th>开始时间</th>
+                            <th>时长</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var record in browseRecords)
+                        {
+                            <tr>
+                                <td>@record.NewsHeadline</td>
+                                <td>@record.NewsCategory</td>
+                                <td>@record.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@record.Duration</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <div class="pagination">
+                <button class="pagination-button" @onclick="PreviousPage" disabled="@(!CanGoBack || isLoading)">上一页</button>
+                <span>第 @pageNumber 页 / 共 @totalPages 页</span>
+                <button class="pagination-button" @onclick="NextPage" disabled="@(!CanGoNext || isLoading)">下一页</button>
+            </div>
+        </div>
+    </div>
+}
+else if (activeTab == "trend")
+{
+    <div class="user-daily-trend">
+        <div class="filters">
+            <div class="filter-group">
+                <label>用户ID：</label>
+                <input type="number" @bind="userId" />
+            </div>
+
+            <div class="filter-group">
+                <label>开始日期：</label>
+                <input type="date" @bind="startDate" />
+            </div>
+
+            <div class="filter-group">
+                <label>结束日期：</label>
+                <input type="date" @bind="endDate" />
+            </div>
+
+            <div class="filter-group">
+                <button class="apply-button" @onclick="FetchUserDailyTrend">应用筛选</button>
+            </div>
+        </div>
+
+        <div class="trend-list">
+            <h4>用户日常趋势</h4>
+
+            @if (isTrendLoading)
+            {
+                <p>加载趋势数据...</p>
+            }
+            else if (dailyTrends == null || !dailyTrends.Any())
+            {
+                <p>没有找到数据，请尝试不同的日期。</p>
+            }
+            else
+            {
+                <table class="trend-table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>浏览次数</th>
+                            <th>总时长</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var trend in dailyTrends)
+                        {
+                            <tr>
+                                <td>@trend.Date.ToString("yyyy-MM-dd")</td>
+                                <td>@trend.BrowseCount</td>
+                                <td>@trend.TotalDuration</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private string activeTab = "browse";
+    private int userId = 1; // Default user ID
+    private DateTime startDate = new DateTime(2019, 6, 13);
+    private DateTime endDate = new DateTime(2019, 6, 30);
+    private int pageNumber = 1;
+    private int totalPages = 1;
+    private const int pageSize = 10;
+
+    // Loading states
+    private bool isLoading = false;
+    private bool isTrendLoading = false;
+
+    // For Browse Records
+    private List<BrowseRecordDto> browseRecords = new List<BrowseRecordDto>();
+
+    // For User Daily Trend
+    private List<DailyTrendDto> dailyTrends = new List<DailyTrendDto>();
+
+    // Pagination control
+    private bool CanGoBack => pageNumber > 1;
+    private bool CanGoNext => pageNumber < totalPages;
+
+    // Apply filters and reset pagination
+    private async Task ApplyBrowseFilters()
+    {
+        pageNumber = 1; // Reset to first page
+        await FetchNewsBrowseRecords();
+    }
+
+    // Fetch Browse Records with pagination
+    private async Task FetchNewsBrowseRecords()
+    {
+        try
+        {
+            isLoading = true;
+
+            var response = await Http.GetFromJsonAsync<PaginatedResponse<BrowseRecordDto>>(
+            $"http://localhost:5137/api/newsbrowserecord/user-records/{userId}" +
+            $"?startDate={startDate:yyyy-MM-dd}" +
+            $"&endDate={endDate:yyyy-MM-dd}" +
+            $"&page={pageNumber}" +
+            $"&pageSize={pageSize}");
+
+            if (response != null)
+            {
+                browseRecords = response.Items;
+                totalPages = (int)Math.Ceiling(response.TotalCount / (double)pageSize);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching browse records: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    // Fetch User Daily Trend
+    private async Task FetchUserDailyTrend()
+    {
+        try
+        {
+            isTrendLoading = true;
+
+            var response = await Http.GetFromJsonAsync<IEnumerable<DailyTrendDto>>(
+            $"http://localhost:5137/api/newsbrowserecord/user-daily-trend/{userId}" +
+            $"?startDate={startDate:yyyy-MM-dd}" +
+            $"&endDate={endDate:yyyy-MM-dd}");
+
+            if (response != null)
+            {
+                dailyTrends = response.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching daily trend: {ex.Message}");
+        }
+        finally
+        {
+            isTrendLoading = false;
+        }
+    }
+
+    // Switch between tabs
+    private void SwitchTab(string tabName)
+    {
+        activeTab = tabName;
+        pageNumber = 1; // Reset page number when switching tabs
+
+        if (tabName == "browse")
+        {
+            browseRecords.Clear();
+        }
+        else if (tabName == "trend")
+        {
+            dailyTrends.Clear();
+        }
+    }
+
+    // Pagination controls
+    private async Task PreviousPage()
+    {
+        if (CanGoBack)
+        {
+            pageNumber--;
+            await FetchNewsBrowseRecords();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanGoNext)
+        {
+            pageNumber++;
+            await FetchNewsBrowseRecords();
+        }
+    }
+
+    private void GoBackToHomePage()
+    {
+        NavigationManager.NavigateTo("/"); // Navigate back to home page
+    }
+}

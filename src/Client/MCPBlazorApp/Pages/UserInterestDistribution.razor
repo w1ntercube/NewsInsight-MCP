@@ -1,0 +1,102 @@
+@page "/userinterestdistribution"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@using NewsInsight.Shared.Models.DTOs
+@inject NavigationManager NavigationManager
+
+<h3 class="page-title">用户兴趣分布</h3>
+
+<button class="back-button" @onclick="GoBackToHomePage">返回主页</button>
+
+<!-- 筛选控件 -->
+<div class="filters">
+    <div class="filter-group">
+        <label>用户ID：</label>
+        <input type="number" @bind="userId" />
+    </div>
+
+    <div class="filter-group">
+        <label>开始日期：</label>
+        <input type="date" @bind="startDate" />
+    </div>
+
+    <div class="filter-group">
+        <label>结束日期：</label>
+        <input type="date" @bind="endDate" />
+    </div>
+
+    <div class="filter-group">
+        <button class="apply-button" @onclick="FetchUserInterestDistribution">获取分布</button>
+    </div>
+</div>
+
+@if (interestDistributionData != null && interestDistributionData.Any())
+{
+    <div class="distribution-result">
+        <h4>从 @startDate 到 @endDate 的用户兴趣分布</h4>
+
+        <table class="distribution-table">
+            <thead>
+                <tr>
+                    <th>类别</th>
+                    <th>总点击数</th>
+                    <th>总停留时长</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in interestDistributionData)
+                {
+                    <tr>
+                        <td>@item.Category</td>
+                        <td>@item.TotalClicks</td>
+                        <td>@item.TotalDwellTime</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (interestDistributionData == null || !interestDistributionData.Any())
+{
+    <p>未找到符合条件的数据。</p>
+}
+
+@code {
+    private int userId = 1;  // 默认用户ID
+    private DateTime startDate = new DateTime(2019, 6, 13);  // 默认开始日期
+    private DateTime endDate = new DateTime(2019, 6, 30);    // 默认结束日期
+    private List<InterestDistributionItemDto> interestDistributionData = new List<InterestDistributionItemDto>();
+
+    // 获取用户兴趣分布数据
+    private async Task FetchUserInterestDistribution()
+    {
+        try
+        {
+            var queryParams = new Dictionary<string, string?>
+            {
+                { "userId", userId.ToString() },
+                { "startDate", startDate.ToString("yyyy-MM-dd") },
+                { "endDate", endDate.ToString("yyyy-MM-dd") }
+            };
+
+            var response = await Http.GetFromJsonAsync<UserInterestDistributionDto>(
+                $"http://localhost:5137/api/userinterest/user-interest-distribution/{userId}?{await new FormUrlEncodedContent(queryParams).ReadAsStringAsync()}");
+
+            if (response != null)
+            {
+                interestDistributionData = response.Distribution;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching user interest distribution: {ex.Message}");
+            interestDistributionData = new List<InterestDistributionItemDto>();
+        }
+    }
+
+    private void GoBackToHomePage()
+    {
+        NavigationManager.NavigateTo("/");  // 返回主页
+    }
+}

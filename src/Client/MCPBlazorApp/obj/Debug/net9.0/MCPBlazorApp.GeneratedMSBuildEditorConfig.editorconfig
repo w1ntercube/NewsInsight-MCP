@@ -1,0 +1,61 @@
+is_global = true
+build_property.EnableAotAnalyzer = 
+build_property.EnableSingleFileAnalyzer = 
+build_property.EnableTrimAnalyzer = false
+build_property.IncludeAllContentForSelfExtract = 
+build_property.TargetFramework = net9.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = false
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = browser
+build_property.RootNamespace = MCPBlazorApp
+build_property.RootNamespace = MCPBlazorApp
+build_property.ProjectDir = D:\Projects\DOTNET\NewsInsight\src\Client\MCPBlazorApp\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = false
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = D:\Projects\DOTNET\NewsInsight\src\Client\MCPBlazorApp
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 9.0
+build_property.EnableCodeStyleSeverity = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/Pages/CategoryHeatmapPage.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2F0ZWdvcnlIZWF0bWFwUGFnZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/Pages/HomePage.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSG9tZVBhZ2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/Pages/NewsBrowseRecord.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTmV3c0Jyb3dzZVJlY29yZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/Pages/NewsPage.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTmV3c1BhZ2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/Pages/UserInterestDistribution.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlckludGVyZXN0RGlzdHJpYnV0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE1haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-c0zvk5x3cx
+
+[D:/Projects/DOTNET/NewsInsight/src/Client/MCPBlazorApp/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE5hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-jv1sja2jok

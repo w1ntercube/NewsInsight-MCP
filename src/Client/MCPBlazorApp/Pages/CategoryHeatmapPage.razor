@@ -1,0 +1,111 @@
+@page "/categoryheatmap"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@using NewsInsight.Shared.Models.DTOs
+@inject NavigationManager NavigationManager
+
+<h3 class="page-title">类别热度分析</h3>
+
+<button class="back-button" @onclick="GoBackToHomePage">返回主页</button>
+
+<!-- 筛选控件 -->
+<div class="filters">
+    <div class="filter-group">
+        <label>类别：</label>
+        <input type="text" @bind="categoriesInput" placeholder="请输入类别，用逗号分隔" />
+    </div>
+
+    <div class="filter-group">
+        <label>开始日期：</label>
+        <input type="date" @bind="startDate" />
+    </div>
+
+    <div class="filter-group">
+        <label>结束日期：</label>
+        <input type="date" @bind="endDate" />
+    </div>
+
+    <div class="filter-group">
+        <button class="apply-button" @onclick="FetchCategoryHeatmap">获取热度图</button>
+    </div>
+</div>
+
+@if (heatmapData != null && heatmapData.Any())
+{
+    <div class="heatmap-result">
+        <h4>从 @startDate 到 @endDate 的类别热度图</h4>
+
+        <table class="heatmap-table">
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>类别</th>
+                    <th>浏览次数</th>
+                    <th>浏览时长</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var day in heatmapData)
+                {
+                    @foreach (var category in day.Categories)
+                    {
+                        <tr>
+                            <td>@day.Date.ToString("yyyy-MM-dd")</td>
+                            <td>@category.Category</td>
+                            <td>@category.BrowseCount</td>
+                            <td>@category.BrowseDuration</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (heatmapData == null || !heatmapData.Any())
+{
+    <p>未找到数据，请尝试不同的类别或日期。</p>
+}
+
+@code {
+    private string categoriesInput = "entertainment"; // 默认类别
+    private DateTime startDate = new DateTime(2019, 6, 13); // 默认开始日期
+    private DateTime endDate = new DateTime(2019, 6, 30); // 默认结束日期
+    private List<CategoryHeatmapDayDto> heatmapData = new List<CategoryHeatmapDayDto>();
+
+    // 获取类别热度图数据
+    private async Task FetchCategoryHeatmap()
+    {
+        try
+        {
+            // 解析输入的类别
+            var categories = categoriesInput.Split(',').Select(c => c.Trim()).ToList();
+
+            var queryParams = new Dictionary<string, string?>
+            {
+                { "categories", string.Join(",", categories) },
+                { "startDate", startDate.ToString("yyyy-MM-dd") },
+                { "endDate", endDate.ToString("yyyy-MM-dd") }
+            };
+
+            var response = await Http.GetFromJsonAsync<CategoryHeatmapDto>(
+                $"http://localhost:5137/api/newscategory/category-heatmap?{await new FormUrlEncodedContent(queryParams).ReadAsStringAsync()}");
+
+            if (response != null)
+            {
+                heatmapData = response.HeatmapData;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching heatmap data: {ex.Message}");
+            heatmapData = new List<CategoryHeatmapDayDto>();
+        }
+    }
+
+    // 返回主页
+    private void GoBackToHomePage()
+    {
+        NavigationManager.NavigateTo("/"); 
+    }
+}
