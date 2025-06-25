@@ -262,3 +262,4 @@ D:\Projects\DOTNET\NewsInsight\src\Server\MCP-NewsInsight.Server\obj\Debug\net9.
 D:\Projects\DOTNET\NewsInsight\src\Server\MCP-NewsInsight.Server\obj\Debug\net9.0\ref\MCP-NewsInsight.Server.dll
 D:\Projects\DOTNET\NewsInsight\src\Server\MCP-NewsInsight.Server\bin\Debug\net9.0\NewsInsight.Shared.Models.dll
 D:\Projects\DOTNET\NewsInsight\src\Server\MCP-NewsInsight.Server\bin\Debug\net9.0\NewsInsight.Shared.Models.pdb
+D:\Projects\DOTNET\NewsInsight\src\Server\MCP-NewsInsight.Server\obj\Debug\net9.0\MCP-NewsInsight.Server.sourcelink.json

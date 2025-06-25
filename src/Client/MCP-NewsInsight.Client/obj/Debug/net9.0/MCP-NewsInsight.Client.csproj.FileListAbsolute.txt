@@ -86,3 +86,4 @@ D:\Projects\DOTNET\NewsInsight\src\Client\MCP-NewsInsight.Client\bin\Debug\net9.
 D:\Projects\DOTNET\NewsInsight\src\Client\MCP-NewsInsight.Client\bin\Debug\net9.0\runtimes\win\lib\net8.0\System.Windows.Extensions.dll
 D:\Projects\DOTNET\NewsInsight\src\Client\MCP-NewsInsight.Client\bin\Debug\net9.0\NewsInsight.Shared.Models.dll
 D:\Projects\DOTNET\NewsInsight\src\Client\MCP-NewsInsight.Client\bin\Debug\net9.0\NewsInsight.Shared.Models.pdb
+D:\Projects\DOTNET\NewsInsight\src\Client\MCP-NewsInsight.Client\obj\Debug\net9.0\MCP-NewsInsight.Client.sourcelink.json

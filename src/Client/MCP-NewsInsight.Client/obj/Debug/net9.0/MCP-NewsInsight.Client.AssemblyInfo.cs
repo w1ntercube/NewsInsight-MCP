@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MCP-NewsInsight.Client")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+73979e1ac3d660e65d7b5eba13f16112639060dd")]
 [assembly: System.Reflection.AssemblyProductAttribute("MCP-NewsInsight.Client")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MCP-NewsInsight.Client")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

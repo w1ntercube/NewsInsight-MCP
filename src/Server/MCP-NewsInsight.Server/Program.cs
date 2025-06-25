@@ -5,6 +5,7 @@ using MCPNewsInsight.Server.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MCPNewsInsight.Server;
+using MCPNewsInsight.Server.Tools;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -17,11 +18,13 @@ builder.Logging.AddConsole(consoleLogOptions =>
 // 配置数据库连接
 builder.Services.AddDbContext<NewsDbContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-                     ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection")))
-);
+                     ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
 // 注册后台服务
 builder.Services.AddHostedService<Worker>();
+
+// 添加 NewsTools 作为服务
+builder.Services.AddTransient<NewsTools>();
 
 // 注册 MCP Server
 builder.Services

@@ -2,6 +2,23 @@
   "version": 3,
   "targets": {
     "net9.0": {
+      "Anthropic.SDK/5.4.1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
+          "Microsoft.Extensions.AI.Abstractions": "9.5.0"
+        },
+        "compile": {
+          "lib/net8.0/Anthropic.SDK.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Anthropic.SDK.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "BouncyCastle.Cryptography/2.5.1": {
         "type": "package",
         "compile": {
@@ -68,6 +85,19 @@
         },
         "runtime": {
           "lib/net6.0/K4os.Hash.xxHash.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.Bcl.AsyncInterfaces/8.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
             "related": ".xml"
           }
         }
@@ -873,6 +903,25 @@
     }
   },
   "libraries": {
+    "Anthropic.SDK/5.4.1": {
+      "sha512": "B6k3/p8bUAXdWNWTV9LZctcOlqaQ9RUZV5QiWXrxecjlG7ImxlgiypuaxUzHl9xZZGOa2xOPVUASoG+6xnSoZw==",
+      "type": "package",
+      "path": "anthropic.sdk/5.4.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "anthropic.sdk.5.4.1.nupkg.sha512",
+        "anthropic.sdk.nuspec",
+        "icon.png",
+        "lib/net6.0/Anthropic.SDK.dll",
+        "lib/net6.0/Anthropic.SDK.xml",
+        "lib/net8.0/Anthropic.SDK.dll",
+        "lib/net8.0/Anthropic.SDK.xml",
+        "lib/netstandard2.0/Anthropic.SDK.dll",
+        "lib/netstandard2.0/Anthropic.SDK.xml"
+      ]
+    },
     "BouncyCastle.Cryptography/2.5.1": {
       "sha512": "zy8TMeTP+1FH2NrLaNZtdRbBdq7u5MI+NFZQOBSM69u5RFkciinwzV2eveY6Kjf5MzgsYvvl6kTStsj3JrXqkg==",
       "type": "package",
@@ -977,6 +1026,30 @@
         "lib/netstandard2.0/K4os.Hash.xxHash.xml",
         "lib/netstandard2.1/K4os.Hash.xxHash.dll",
         "lib/netstandard2.1/K4os.Hash.xxHash.xml"
+      ]
+    },
+    "Microsoft.Bcl.AsyncInterfaces/8.0.0": {
+      "sha512": "3WA9q9yVqJp222P3x1wYIGDAkpjAku0TMUaaQV22g6L67AI0LdOIrVS7Ht2vJfLHGSPVuqN94vIr15qn+HEkHw==",
+      "type": "package",
+      "path": "microsoft.bcl.asyncinterfaces/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Bcl.AsyncInterfaces.targets",
+        "buildTransitive/net462/_._",
+        "lib/net462/Microsoft.Bcl.AsyncInterfaces.dll",
+        "lib/net462/Microsoft.Bcl.AsyncInterfaces.xml",
+        "lib/netstandard2.0/Microsoft.Bcl.AsyncInterfaces.dll",
+        "lib/netstandard2.0/Microsoft.Bcl.AsyncInterfaces.xml",
+        "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll",
+        "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.xml",
+        "microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
+        "microsoft.bcl.asyncinterfaces.nuspec",
+        "useSharedDesignerContext.txt"
       ]
     },
     "Microsoft.EntityFrameworkCore/9.0.3": {
@@ -2584,6 +2657,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
+      "Anthropic.SDK >= 5.4.1",
       "ModelContextProtocol >= 0.3.0-preview.1",
       "NewsInsight.Shared.Models >= 1.0.0"
     ]
@@ -2643,6 +2717,10 @@
       "net9.0": {
         "targetAlias": "net9.0",
         "dependencies": {
+          "Anthropic.SDK": {
+            "target": "Package",
+            "version": "[5.4.1, )"
+          },
           "ModelContextProtocol": {
             "target": "Package",
             "version": "[0.3.0-preview.1, )"

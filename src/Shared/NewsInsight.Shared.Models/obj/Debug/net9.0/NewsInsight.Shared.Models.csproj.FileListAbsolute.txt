@@ -22,3 +22,4 @@ D:\Projects\DOTNET\NewsInsight\src\Shared\NewsInsight.Shared.Models\obj\Debug\ne
 D:\Projects\DOTNET\NewsInsight\src\Shared\NewsInsight.Shared.Models\obj\Debug\net9.0\refint\NewsInsight.Shared.Models.dll
 D:\Projects\DOTNET\NewsInsight\src\Shared\NewsInsight.Shared.Models\obj\Debug\net9.0\NewsInsight.Shared.Models.pdb
 D:\Projects\DOTNET\NewsInsight\src\Shared\NewsInsight.Shared.Models\obj\Debug\net9.0\ref\NewsInsight.Shared.Models.dll
+D:\Projects\DOTNET\NewsInsight\src\Shared\NewsInsight.Shared.Models\obj\Debug\net9.0\NewsInsight.Shared.Models.sourcelink.json

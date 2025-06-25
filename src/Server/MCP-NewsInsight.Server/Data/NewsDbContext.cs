@@ -1,31 +1,46 @@
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
 
 namespace MCPNewsInsight.Server.Data
 {
     public class NewsDbContext : DbContext
     {
-        public NewsDbContext(DbContextOptions<NewsDbContext> options) : base(options) { }
-
         public DbSet<News> News { get; set; }
-        public DbSet<NewsBrowseRecord> NewsBrowseRecord { get; set; }
-    }
 
+        // 添加一个构造函数，接受 DbContextOptions 并传递给基类
+        public NewsDbContext(DbContextOptions<NewsDbContext> options) : base(options)
+        {
+        }
+    }
+    [Table("t_news")]
     public class News
     {
-        public int Id { get; set; }
-
-        public string? Headline { get; set; }
-        public string? Content { get; set; }
-        public string? Category { get; set; }
-        public string? Topic { get; set; }
-    }
-
-    public class NewsBrowseRecord
-    {
-        public int UserId { get; set; }
+        [Column("news_id")]
         public int NewsId { get; set; }
-        public DateTime StartTime { get; set; }
-        public int Duration { get; set; }
-        public DateTime StartDay { get; set; }
+
+        [Column("headline")]
+        [Required]
+        public string Headline { get; set; } = string.Empty;
+
+        [Column("content")]
+        [Required]
+        public string Content { get; set; } = string.Empty;
+
+        [Column("category")]
+        [Required]
+        public string Category { get; set; } = string.Empty;
+
+        [Column("topic")]
+        public string Topic { get; set; } = string.Empty;
+
+        [Column("total_browse_num")]
+        public int TotalBrowseNum { get; set; }
+
+        [Column("total_browse_duration")]
+        public int TotalBrowseDuration { get; set; }
+
+        [Column("released_time")]
+        public int ReleasedTime { get; set; }
     }
 }
