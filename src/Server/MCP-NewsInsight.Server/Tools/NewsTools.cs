@@ -116,10 +116,11 @@ namespace MCPNewsInsight.Server.Tools
             }
         }
 
-                // 通过关键词全文搜索新闻标题
-        [McpServerTool, Description("根据关键词搜索新闻标题，返回匹配的前10条标题")]
+        // 通过关键词全文搜索新闻标题
+        [McpServerTool, Description("根据关键词搜索新闻标题，如果关键词不是英文，请先翻译为英文，返回匹配的标题数量由num参数指定，默认为5")]
         public async Task<List<string>> SearchNewsByKeywords(
-            [Description("用于搜索的关键词，可以是多个词")] string keywords)
+            [Description("用于搜索的关键词，可以是多个词")] string keywords,
+            [Description("指定返回的新闻条目数，默认为5")] int num = 5)
         {
             string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
             var results = new List<string>();
@@ -128,20 +129,22 @@ namespace MCPNewsInsight.Server.Tools
             {
                 using var connection = new MySqlConnection(connectionString);
                 await connection.OpenAsync();
-                
+
                 // 使用全文索引进行搜索，按相关性排序
                 var command = new MySqlCommand(
                     "SELECT headline, MATCH(headline) AGAINST (@keywords) AS relevance " +
                     "FROM t_news " +
                     "WHERE MATCH(headline) AGAINST (@keywords) " +
                     "ORDER BY relevance DESC " +
-                    "LIMIT 10", 
+                    "LIMIT @num", 
                     connection);
-                
+
+                // 添加查询参数
                 command.Parameters.AddWithValue("@keywords", keywords);
+                command.Parameters.AddWithValue("@num", num);  // 使用用户指定的num作为LIMIT的参数
 
                 using var reader = await command.ExecuteReaderAsync();
-                
+
                 while (await reader.ReadAsync())
                 {
                     results.Add(reader.GetString(reader.GetOrdinal("headline")));
@@ -157,6 +160,51 @@ namespace MCPNewsInsight.Server.Tools
             return results;
         }
 
+        [McpServerTool, Description("根据分类获取新闻标题")]
+        public async Task<List<string>> GetNewsByCategory(
+            [Description("新闻分类")] string category,
+            [Description("返回数量，默认5条")] int num = 5)
+        {
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            var headlines = new List<string>();
 
+            try
+            {
+                using var connection = new MySqlConnection(connectionString);
+                await connection.OpenAsync();
+                
+                // 使用RAND()随机排序并限制返回数量
+                var command = new MySqlCommand(
+                    "SELECT headline " +
+                    "FROM t_news " +
+                    "WHERE category = @category " +
+                    "ORDER BY RAND() " +  // 随机排序
+                    "LIMIT @limit", 
+                    connection);
+                
+                command.Parameters.AddWithValue("@category", category);
+                command.Parameters.AddWithValue("@limit", num);
+
+                using var reader = await command.ExecuteReaderAsync();
+                
+                while (await reader.ReadAsync())
+                {
+                    headlines.Add(reader.GetString(reader.GetOrdinal("headline")));
+                }
+                
+                // 如果结果不足请求数量，补充说明
+                if (headlines.Count < num)
+                {
+                    headlines.Add($"（仅找到 {headlines.Count} 条{category}分类新闻）");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "随机新闻获取失败");
+                headlines.Add($"错误: {ex.Message}");
+            }
+
+            return headlines;
+        }
     }
 }

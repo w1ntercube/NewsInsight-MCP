@@ -154,6 +154,7 @@ namespace NewsInsight.Shared.Models.DTOs
 
     public class CategoryHeatItemDto
     {
+        
         public string Category { get; set; } // 类别名称
         public int BrowseCount { get; set; } // 浏览次数
         public int BrowseDuration { get; set; } // 浏览时长
