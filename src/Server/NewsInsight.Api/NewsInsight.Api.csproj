@@ -4,9 +4,11 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0-preview.3.efcore.9.0.0" /> 
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
@@ -15,6 +17,18 @@
 
   <ItemGroup>
       <ProjectReference Include="..\..\Shared\NewsInsight.Shared.Models\NewsInsight.Shared.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 引用 PrefixMatcherWrapper 程序集 -->
+    <Reference Include="PrefixMatcherWrapper">
+      <HintPath>lib\PrefixMatcherWrapper.dll</HintPath>
+    </Reference>
+    
+    <!-- 确保原生 DLL 被复制到输出目录 -->
+    <Content Include="lib\NativePrefixMatcher.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

@@ -2,3 +2,81 @@ bin/
 obj/
 **/bin/
 **/obj/
+
+
+# Windows 的文件系统中通常会有这些系统文件
+Thumbs.db
+ehthumbs.db
+
+# Windows IDE 中的特定文件
+# VS 2019
+.vs2019/
+.vs2019config/
+.vs/
+.vscode/
+
+# Visual Studio 生成的文件
+# User-specific files
+.vsconfig
+.vs2019
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# Windows Installer 文件
+*.cab
+*.msi
+*.msm
+*.msp
+
+# .NET Core 编译文件
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# C++/CLI 和 Visual Studio 项目文件夹
+# 这些是编译生成的文件夹
+bin/
+obj/
+
+# 发布/调试输出
+[Dd]ebug/
+[Dd]ebugPublic/
+[Dd]eploy/
+[Dd]eploy/Source
+[Dd]ebugx64/
+[Dd]ebugx86/
+[Dd]eployx64/
+[Dd]eployx86/
+Release/
+ReleasePublic/
+
+# 生成的文件
+*.dll
+*.exe
+*.pdb
+*.obj
+*.lib
+*.exp
+*.ilk
+*.idb
+*.ipch
+*.pch
+*.dmp
+*.log
+
+# CMake 文件
+CMakeCache.txt
+CMakeFiles/
+CMakeLists.txt.user
+Makefile
+
+# 文件的临时缓存
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# VS Code 编辑器的工作目录
+.vscode/

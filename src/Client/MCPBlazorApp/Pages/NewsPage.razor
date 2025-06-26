@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @using NewsInsight.Shared.Models.DTOs
 @inject NavigationManager NavigationManager
+@implements IDisposable
 
 <h3 class="page-title">新闻管理</h3>
 
@@ -23,12 +24,21 @@
         <div class="filters">
             <div class="filter-group">
                 <label>类别：</label>
-                <select @bind="category">
-                    <option value="">所有</option>
-                    <option value="Sports">体育</option>
-                    <option value="Politics">政治</option>
-                    <option value="Technology">科技</option>
-                </select>
+                <input type="text" @bind="categoryInput" @oninput="HandleCategoryInput" placeholder="输入类别（如：sports）"
+                    @onfocus="ShowCategorySuggestions" @onblur="HideCategorySuggestions" />
+
+                @if (showCategorySuggestions && matchedCategories.Any())
+                {
+                    <div class="suggestion-box">
+                        @foreach (var cat in matchedCategories)
+                        {
+                            <div class="suggestion-item" @onclick="() => SelectCategory(cat)"
+                                @onmouseover="() => SetHoverCategory(cat)" @onmouseout="() => SetHoverCategory(null)">
+                                @cat
+                            </div>
+                        }
+                    </div>
+                }
             </div>
 
             <div class="filter-group">
@@ -154,23 +164,47 @@ else if (activeTab == "details")
     private int pageNumber = 1;
     private int totalPages = 1;
     private const int pageSize = 10;
-    
+
     // Loading states
     private bool isLoading = false;
     private bool isDetailsLoading = false;
-    
+
     private List<NewsDto> newsList = new List<NewsDto>();
     private int? searchId;
     private NewsDto? selectedNews;
     private bool hasSearched = false;
-    
+
     // Pagination control
     private bool CanGoBack => pageNumber > 1;
     private bool CanGoNext => pageNumber < totalPages;
 
+    // Category suggestions
+    private string categoryInput = string.Empty;
+    private List<string> matchedCategories = new();
+    private bool showCategorySuggestions = false;
+    private string? hoverCategory = null;
+    private System.Timers.Timer? suggestionTimer;
+    private bool isCategorySelected = false;
+
+    protected override void OnInitialized()
+    {
+        suggestionTimer = new System.Timers.Timer(300);
+        suggestionTimer.AutoReset = false;
+        suggestionTimer.Elapsed += async (sender, e) =>
+        {
+            await FetchCategorySuggestions();
+            await InvokeAsync(StateHasChanged);
+        };
+    }
+
+    public void Dispose()
+    {
+        suggestionTimer?.Dispose();
+    }
+
     private async Task ApplyFilters()
     {
-        pageNumber = 1; // 重置到第一页
+        pageNumber = 1;
         await FetchNews();
     }
 
@@ -184,20 +218,25 @@ else if (activeTab == "details")
         try
         {
             isLoading = true;
-            StateHasChanged(); // 立即更新UI显示加载状态
-            
+            StateHasChanged();
+
             var queryParams = new Dictionary<string, string?>
-            {
-                { "category", category },
-                { "keyword", keyword },
-                { "sortBy", sortBy },
-                { "sortDesc", sortDesc.ToString() },
-                { "page", pageNumber.ToString() },
-                { "pageSize", pageSize.ToString() }
-            };
+{
+{ "category", category },
+{ "keyword", keyword },
+{ "sortBy", sortBy },
+{ "sortDesc", sortDesc.ToString() },
+{ "page", pageNumber.ToString() },
+{ "pageSize", pageSize.ToString() }
+};
+
+            // 移除空参数
+            var validParams = queryParams
+            .Where(p => !string.IsNullOrEmpty(p.Value))
+            .ToDictionary(p => p.Key, p => p.Value);
 
             var response = await Http.GetFromJsonAsync<PaginatedResponse<NewsDto>>(
-                $"api/news?{await new FormUrlEncodedContent(queryParams).ReadAsStringAsync()}");
+            $"api/news?{await new FormUrlEncodedContent(validParams).ReadAsStringAsync()}");
 
             if (response != null)
             {
@@ -228,8 +267,8 @@ else if (activeTab == "details")
         try
         {
             isDetailsLoading = true;
-            StateHasChanged(); // 立即更新UI显示加载状态
-            
+            StateHasChanged();
+
             selectedNews = await Http.GetFromJsonAsync<NewsDto>($"api/news/{searchId}");
         }
         catch
@@ -267,13 +306,98 @@ else if (activeTab == "details")
         {
             selectedNews = null;
             hasSearched = false;
-            pageNumber = 1; // 重置页码
-            await FetchNews(); // 重新加载新闻列表
+            pageNumber = 1;
+            await FetchNews();
         }
     }
 
     private void GoBackToHomePage()
     {
         NavigationManager.NavigateTo("/");
+    }
+
+    private void HandleCategoryInput(ChangeEventArgs e)
+    {
+        categoryInput = e.Value?.ToString() ?? string.Empty;
+        isCategorySelected = false;
+
+        // 重置并启动防抖计时器
+        suggestionTimer?.Stop();
+        suggestionTimer?.Start();
+    }
+
+    private void ShowCategorySuggestions()
+    {
+        showCategorySuggestions = true;
+        // 立即获取当前输入的建议
+        if (!string.IsNullOrWhiteSpace(categoryInput))
+        {
+            _ = FetchCategorySuggestions();
+        }
+    }
+    
+    private async void HideCategorySuggestions()
+    {
+        // 短暂延迟以允许点击事件处理
+        await Task.Delay(200);
+        if (!isCategorySelected)
+        {
+            showCategorySuggestions = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FetchCategorySuggestions()
+    {
+        if (string.IsNullOrWhiteSpace(categoryInput) || isCategorySelected)
+        {
+            matchedCategories.Clear();
+            return;
+        }
+
+        try
+        {
+            // 使用当前输入值获取建议
+            var prefix = categoryInput.Trim();
+            var response = await Http.GetAsync(
+            $"api/news/categories/match?prefix={Uri.EscapeDataString(prefix)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                matchedCategories = await response.Content.ReadFromJsonAsync<List<string>>()
+                ?? new List<string>();
+            }
+            else
+            {
+                matchedCategories = new List<string>();
+            }
+
+            // 只有在有匹配结果时才显示建议框
+            showCategorySuggestions = matchedCategories.Any();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"获取类别建议失败: {ex.Message}");
+            matchedCategories = new List<string>();
+            showCategorySuggestions = false;
+        }
+    }
+
+    private void SetHoverCategory(string? category)
+    {
+        hoverCategory = category;
+    }
+
+
+    private async Task SelectCategory(string category)
+    {
+        // 更新输入框和筛选条件
+        this.category = category;
+        categoryInput = category;
+        isCategorySelected = true;
+        showCategorySuggestions = false;
+
+        // 立即应用筛选
+        await ApplyFilters();
     }
 }

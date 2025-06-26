@@ -7,6 +7,17 @@ namespace NewsInsight.Api.Data
     {
         public NewsDbContext(DbContextOptions<NewsDbContext> options) : base(options) { }
 
+        // 创建新的独立实例
+        public NewsDbContext CreateNewInstance()
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<NewsDbContext>();
+            optionsBuilder.UseMySql(
+                Database.GetConnectionString(),
+                ServerVersion.AutoDetect(Database.GetConnectionString()));
+
+            return new NewsDbContext(optionsBuilder.Options);
+        }
+
         public DbSet<News> News { get; set; }
         public DbSet<NewsBrowseRecord> NewsBrowseRecords { get; set; }
         public DbSet<NewsCategory> NewsCategories { get; set; }

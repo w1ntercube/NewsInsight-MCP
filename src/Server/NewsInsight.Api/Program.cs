@@ -2,13 +2,26 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models; // 用于Swagger
 using NewsInsight.Api.Data;
 using NewsInsight.Api.Middleware;
+using NewsInsight.Api.Services;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 连接数据库
-builder.Services.AddDbContext<NewsDbContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("NewsDbConnection"),
-        new MySqlServerVersion(new Version(8, 0, 21)))); // MySQL 版本配置
+builder.Services.AddDbContextPool<NewsDbContext>(options =>
+{
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("NewsDbConnection"),
+        new MySqlServerVersion(new Version(8, 0, 21)),
+        optionsBuilder =>
+        {
+            optionsBuilder.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+            optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        });
+});
 
 // 添加 Swagger 生成器
 builder.Services.AddSwaggerGen(c =>
@@ -18,6 +31,12 @@ builder.Services.AddSwaggerGen(c =>
 
 // 添加控制器服务
 builder.Services.AddControllers();
+
+// 添加服务注册
+builder.Services.AddSingleton<IPrefixMatcherService, PrefixMatcherService>();
+
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
 // 配置 CORS（允许特定来源）
 builder.Services.AddCors(options =>
@@ -30,7 +49,17 @@ builder.Services.AddCors(options =>
     });
 });
 
+// 添加健康检查
+builder.Services.AddHealthChecks()
+    .AddMySql(
+        connectionString: builder.Configuration.GetConnectionString("NewsDbConnection"),
+        name: "mysql",
+        failureStatus: HealthStatus.Degraded);
+
 var app = builder.Build();
+
+// 添加健康检查端点
+app.MapHealthChecks("/health");
 
 // 配置 Swagger 和开发环境
 if (app.Environment.IsDevelopment())

@@ -1,0 +1,2 @@
+#define NATIVEPREFIXMATCHER_API __declspec(dllexport)
+#define NATIVEPREFIXMATCHER_API __declspec(dllimport)
