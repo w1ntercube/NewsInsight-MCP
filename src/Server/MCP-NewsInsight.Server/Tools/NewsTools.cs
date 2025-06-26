@@ -1,75 +1,162 @@
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Threading.Tasks;
-using MCPNewsInsight.Server.Data;
-using Microsoft.EntityFrameworkCore;
 using ModelContextProtocol.Server;
+using System.ComponentModel;
+using System.Threading.Tasks;
+using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Text.Json;
 
 namespace MCPNewsInsight.Server.Tools
 {
     [McpServerToolType]
     public class NewsTools
     {
-        private readonly NewsDbContext _dbContext;
+        private readonly ILogger<NewsTools> _logger;
+        private readonly IConfiguration _configuration;
 
-        // 构造函数，注入 NewsDbContext
-        public NewsTools(NewsDbContext dbContext)
+        public NewsTools(IConfiguration configuration, ILogger<NewsTools> logger)
         {
-            _dbContext = dbContext;
+            _configuration = configuration;
+            _logger = logger;
+            
+            // 使用直接键访问测试
+            var connStr = _configuration["ConnectionStrings:DefaultConnection"];
+            _logger.LogInformation("配置注入测试(直接键): {conn}", connStr);
         }
 
-        [McpServerTool, Description("从数据库获取最新的新闻头条")]
-        public async Task<List<string>> GetNewsHeadlines(
-            [Description("返回的最大数量")] int maxCount = 5,
-            [Description("新闻分类")] string category = null)
+        [McpServerTool, Description("通过标题获取新闻文章")]
+        public async Task<string> GetNewsByHeadline(
+            [Description("新闻的标题")] string headline)
         {
-            var query = _dbContext.News.AsQueryable();
-
-            if (!string.IsNullOrEmpty(category))
+            // 使用直接键访问连接字符串
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                query = query.Where(n => n.Category == category);
+                _logger.LogError("MySQL连接字符串未配置");
+                
+                // 诊断输出所有配置键
+                var configKeys = _configuration.AsEnumerable()
+                    .Where(kv => !string.IsNullOrEmpty(kv.Value))
+                    .Select(kv => kv.Key);
+                
+                _logger.LogError("非空配置键: {keys}", string.Join(", ", configKeys));
+                
+                return "数据库配置错误：缺少连接字符串";
             }
 
-            return await query
-                .OrderByDescending(n => n.ReleasedTime)
-                .Take(maxCount)
-                .Select(n => n.Headline)
-                .ToListAsync();
-        }
+            _logger.LogInformation("使用连接字符串: {conn}", connectionString);
 
-        [McpServerTool, Description("根据标题获取新闻完整内容")]
-        public async Task<string> GetNewsContent(
-            [Description("新闻标题")] string headline)
+            try
+            {
+                using var connection = new MySqlConnection(connectionString);
+                await connection.OpenAsync();
+                
+                using var command = new MySqlCommand(
+                    "SELECT content FROM t_news WHERE headline = @headline LIMIT 1", 
+                    connection);
+                
+                command.Parameters.AddWithValue("@headline", headline);
+
+                using var reader = await command.ExecuteReaderAsync();
+                
+                return await reader.ReadAsync() 
+                    ? reader.GetString(reader.GetOrdinal("content"))
+                    : "未找到匹配该标题的新闻。";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "数据库查询失败");
+                return $"数据库错误：{ex.Message}";
+            }
+        }
+        
+        // 通过新闻ID获取完整新闻内容
+        [McpServerTool, Description("通过新闻ID获取完整新闻内容")]
+        public async Task<string> GetNewsById(
+            [Description("新闻的唯一ID")] int newsId)
         {
-            var article = await _dbContext.News
-                .FirstOrDefaultAsync(n => n.Headline == headline);
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            
+            try
+            {
+                using var connection = new MySqlConnection(connectionString);
+                await connection.OpenAsync();
+                
+                var command = new MySqlCommand(
+                    "SELECT headline, content, category, topic " +
+                    "FROM t_news WHERE news_id = @newsId LIMIT 1", 
+                    connection);
+                
+                command.Parameters.AddWithValue("@newsId", newsId);
 
-            return article != null
-                ? $"{article.Headline}\n\n{article.Content}"
-                : "未找到匹配的新闻";
+                using var reader = await command.ExecuteReaderAsync();
+                
+                if (await reader.ReadAsync())
+                {
+                    // 创建匿名对象包含所有字段
+                    var news = new {
+                        Headline = reader.GetString(reader.GetOrdinal("headline")),
+                        Content = reader.GetString(reader.GetOrdinal("content")),
+                        Category = reader.GetString(reader.GetOrdinal("category")),
+                        Topic = reader.GetString(reader.GetOrdinal("topic"))
+                    };
+                    
+                    // 序列化为JSON返回
+                    return JsonSerializer.Serialize(news);
+                }
+                
+                return "未找到指定ID的新闻";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "新闻查询失败");
+                return $"数据库错误：{ex.Message}";
+            }
         }
 
-        [McpServerTool, Description("获取新闻分类列表")]
-        public async Task<List<string>> GetNewsCategories()
+                // 通过关键词全文搜索新闻标题
+        [McpServerTool, Description("根据关键词搜索新闻标题，返回匹配的前10条标题")]
+        public async Task<List<string>> SearchNewsByKeywords(
+            [Description("用于搜索的关键词，可以是多个词")] string keywords)
         {
-            return await _dbContext.News
-                .Select(n => n.Category)
-                .Distinct()
-                .ToListAsync();
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            var results = new List<string>();
+
+            try
+            {
+                using var connection = new MySqlConnection(connectionString);
+                await connection.OpenAsync();
+                
+                // 使用全文索引进行搜索，按相关性排序
+                var command = new MySqlCommand(
+                    "SELECT headline, MATCH(headline) AGAINST (@keywords) AS relevance " +
+                    "FROM t_news " +
+                    "WHERE MATCH(headline) AGAINST (@keywords) " +
+                    "ORDER BY relevance DESC " +
+                    "LIMIT 10", 
+                    connection);
+                
+                command.Parameters.AddWithValue("@keywords", keywords);
+
+                using var reader = await command.ExecuteReaderAsync();
+                
+                while (await reader.ReadAsync())
+                {
+                    results.Add(reader.GetString(reader.GetOrdinal("headline")));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "新闻搜索失败");
+                // 返回错误信息作为第一条结果
+                results.Add($"搜索失败：{ex.Message}");
+            }
+
+            return results;
         }
 
-        [McpServerTool, Description("获取热门新闻话题")]
-        public async Task<List<string>> GetPopularTopics(
-            [Description("返回的最大数量")] int maxCount = 5)
-        {
-            return await _dbContext.News
-                .Where(n => !string.IsNullOrEmpty(n.Topic))
-                .GroupBy(n => n.Topic)
-                .OrderByDescending(g => g.Count())
-                .Take(maxCount)
-                .Select(g => g.Key)
-                .ToListAsync();
-        }
+
     }
 }

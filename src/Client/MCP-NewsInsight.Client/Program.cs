@@ -11,13 +11,6 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        // 创建配置
-        var builder = Host.CreateApplicationBuilder(args);
-        builder.Configuration
-            .AddEnvironmentVariables()
-            .AddUserSecrets<Program>();
-        var configuration = builder.Configuration;
-
         // 配置MCP传输
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
@@ -44,48 +37,6 @@ class Program
                 Console.WriteLine($"- {tool.Name}: {tool.Description}");
             }
 
-            // 创建Anthropic聊天客户端
-            var anthropicClient = new AnthropicClient(
-                new APIAuthentication(configuration["ANTHROPIC_API_KEY"]));
-
-            // 构建带工具支持的聊天客户端
-            var chatClient = anthropicClient.Messages
-                .AsBuilder()
-                .UseFunctionInvocation()
-                .Build();
-
-            // 配置聊天选项
-            var options = new ChatOptions
-            {
-                MaxOutputTokens = 1000,
-                ModelId = "claude-3-haiku-20240307", // 推荐使用更快的模型
-                Tools = [.. tools] // 注入所有工具
-            };
-
-            Console.WriteLine("新闻分析助手已启动 (输入 'exit' 退出)");
-
-            while (true)
-            {
-                Console.Write("\n您的问题: ");
-                var question = Console.ReadLine();
-
-                if (string.Equals(question, "exit", StringComparison.OrdinalIgnoreCase))
-                    break;
-
-                if (string.IsNullOrWhiteSpace(question))
-                    continue;
-
-                // 流式获取响应（自动处理工具调用）
-                Console.WriteLine("\nAI回复:");
-                Console.WriteLine("----------------------------------------");
-
-                await foreach (var message in chatClient.GetStreamingResponseAsync(question, options))
-                {
-                    Console.Write(message);
-                }
-
-                Console.WriteLine("\n----------------------------------------");
-            }
         }
         catch (Exception ex)
         {

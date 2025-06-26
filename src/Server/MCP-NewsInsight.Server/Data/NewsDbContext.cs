@@ -1,46 +1,29 @@
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+using NewsInsight.Api.Models;
 
-namespace MCPNewsInsight.Server.Data
+public class NewsDbContext : DbContext
 {
-    public class NewsDbContext : DbContext
+    public NewsDbContext(DbContextOptions<NewsDbContext> options) : base(options) { }
+
+    public DbSet<News> News { get; set; }
+    public DbSet<NewsBrowseRecord> NewsBrowseRecords { get; set; }
+    public DbSet<NewsCategory> NewsCategories { get; set; }
+    public DbSet<UserInterest> UserInterests { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        public DbSet<News> News { get; set; }
+        // 配置复合主键 - NewsBrowseRecord (user_id, news_id)
+        modelBuilder.Entity<NewsBrowseRecord>()
+            .HasKey(nbr => new { nbr.UserId, nbr.NewsId });
 
-        // 添加一个构造函数，接受 DbContextOptions 并传递给基类
-        public NewsDbContext(DbContextOptions<NewsDbContext> options) : base(options)
-        {
-        }
-    }
-    [Table("t_news")]
-    public class News
-    {
-        [Column("news_id")]
-        public int NewsId { get; set; }
+        // 配置复合主键 - NewsCategory (day_stamp, category)
+        modelBuilder.Entity<NewsCategory>()
+            .HasKey(nc => new { nc.DayStamp, nc.Category });
 
-        [Column("headline")]
-        [Required]
-        public string Headline { get; set; } = string.Empty;
+        // 配置复合主键 - UserInterest (user_id, category)
+        modelBuilder.Entity<UserInterest>()
+            .HasKey(ui => new { ui.UserId, ui.Category });
 
-        [Column("content")]
-        [Required]
-        public string Content { get; set; } = string.Empty;
-
-        [Column("category")]
-        [Required]
-        public string Category { get; set; } = string.Empty;
-
-        [Column("topic")]
-        public string Topic { get; set; } = string.Empty;
-
-        [Column("total_browse_num")]
-        public int TotalBrowseNum { get; set; }
-
-        [Column("total_browse_duration")]
-        public int TotalBrowseDuration { get; set; }
-
-        [Column("released_time")]
-        public int ReleasedTime { get; set; }
+        base.OnModelCreating(modelBuilder);
     }
 }

@@ -32,7 +32,7 @@ namespace NewsInsight.Shared.Models.DTOs
         public string Topic { get; set; } = string.Empty;
         public DateTime ReleasedTime { get; set; }
         public int BrowseCount { get; set; }
-        public string Content { get; set; } 
+        public string Content { get; set; }
     }
 
     // 用户浏览记录 DTO

@@ -1,32 +1,37 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MCPNewsInsight.Server.Data;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using MCPNewsInsight.Server;
-using MCPNewsInsight.Server.Tools;
+using ModelContextProtocol.Server;
+using Microsoft.Extensions.Configuration;
+using System.IO;
 
-var builder = Host.CreateApplicationBuilder(args);
+// 获取应用程序基目录
+var basePath = AppContext.BaseDirectory;
 
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-builder.Logging.AddConsole(consoleLogOptions =>
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
+    ContentRootPath = basePath, // 明确设置内容根路径
+    ApplicationName = "MCP-NewsInsight.Server"
+});
+
+var appSettingsPath = Path.Combine(basePath, "appsettings.json");
+Console.WriteLine($"加载配置文件: {appSettingsPath}");
+Console.WriteLine($"文件存在: {File.Exists(appSettingsPath)}");
+
+builder.Configuration
+    .AddJsonFile(appSettingsPath, optional: false, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
+// 验证配置加载
+var config = builder.Configuration;
+Console.WriteLine($"配置加载测试: {config.GetConnectionString("DefaultConnection")}");
+
+// 配置日志输出
+builder.Logging.AddConsole(consoleLogOptions => {
     consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
 });
 
-// 配置数据库连接
-builder.Services.AddDbContext<NewsDbContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-                     ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
-
-// 注册后台服务
-builder.Services.AddHostedService<Worker>();
-
-// 添加 NewsTools 作为服务
-builder.Services.AddTransient<NewsTools>();
-
-// 注册 MCP Server
+// 注册 MCP 服务器并添加工具
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
