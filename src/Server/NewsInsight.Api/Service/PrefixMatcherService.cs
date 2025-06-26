@@ -8,39 +8,41 @@ namespace NewsInsight.Api.Services
 {
     public class PrefixMatcherService : IPrefixMatcherService
     {
-        public bool IsInitialized() => _isInitialized;
+        public bool IsCategoryInitialized() => _isCategoryInitialized;
+        public bool IsTopicInitialized() => _isTopicInitialized;
         private readonly ILogger<PrefixMatcherService> _logger;
-        private ManagedBridge.PrefixMatcher _matcher;
+        private ManagedBridge.PrefixMatcher _categoryMatcher;
+        private ManagedBridge.PrefixMatcher _topicMatcher;
         private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
-        private readonly ConcurrentDictionary<string, List<string>> _cache = new();
-        private bool _isInitialized = false;
+        private readonly ConcurrentDictionary<string, List<string>> _categoryCache = new();
+        private readonly ConcurrentDictionary<string, List<string>> _topicCache = new();
+        private bool _isCategoryInitialized = false;
+        private bool _isTopicInitialized = false;
 
         public PrefixMatcherService(ILogger<PrefixMatcherService> logger)
         {
             _logger = logger;
-            _matcher = new ManagedBridge.PrefixMatcher();
+            _categoryMatcher = new ManagedBridge.PrefixMatcher();
+            _topicMatcher = new ManagedBridge.PrefixMatcher();
         }
 
-        public void InitializeMatcher(IEnumerable<string> words)
+
+        public void InitializeCategoryMatcher(IEnumerable<string> categories)
         {
             _lock.EnterWriteLock();
             try
             {
-                _logger.LogInformation("初始化前缀匹配器...");
-                _logger.LogInformation($"将添加 {words.Count()} 个类别");
+                _logger.LogInformation("初始化类别前缀匹配器...");
+                _categoryMatcher = new ManagedBridge.PrefixMatcher();
 
-                // 重置匹配器
-                _matcher = new ManagedBridge.PrefixMatcher();
-
-                foreach (var word in words.Distinct())
+                foreach (var category in categories.Distinct())
                 {
-                    _matcher.AddWord(word);
-                    _logger.LogDebug($"添加类别: {word}");
+                    _categoryMatcher.AddWord(category);
                 }
 
-                _isInitialized = true;
-                _cache.Clear();
-                _logger.LogInformation("前缀匹配器初始化完成");
+                _isCategoryInitialized = true;
+                _categoryCache.Clear();
+                _logger.LogInformation("类别前缀匹配器初始化完成");
             }
             finally
             {
@@ -48,50 +50,77 @@ namespace NewsInsight.Api.Services
             }
         }
 
-        public IEnumerable<string> MatchPrefix(string prefix)
+        public void InitializeTopicMatcher(IEnumerable<string> topics)
+        {
+            _lock.EnterWriteLock();
+            try
+            {
+                _logger.LogInformation("初始化主题前缀匹配器...");
+                _topicMatcher = new ManagedBridge.PrefixMatcher();
+
+                foreach (var topic in topics.Distinct())
+                {
+                    _topicMatcher.AddWord(topic);
+                }
+
+                _isTopicInitialized = true;
+                _topicCache.Clear();
+                _logger.LogInformation("主题前缀匹配器初始化完成");
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
+        }
+
+        public IEnumerable<string> MatchCategoryPrefix(string prefix)
+        {
+            return MatchPrefix(prefix, _isCategoryInitialized, _categoryMatcher, _categoryCache, "类别");
+        }
+
+        public IEnumerable<string> MatchTopicPrefix(string prefix)
+        {
+            return MatchPrefix(prefix, _isTopicInitialized, _topicMatcher, _topicCache, "主题");
+        }
+
+        private IEnumerable<string> MatchPrefix(string prefix, bool isInitialized,
+                                              ManagedBridge.PrefixMatcher matcher,
+                                              ConcurrentDictionary<string, List<string>> cache,
+                                              string type)
         {
             if (string.IsNullOrWhiteSpace(prefix))
             {
-                _logger.LogInformation("匹配请求: 空前缀");
+                _logger.LogInformation($"匹配请求: 空{type}前缀");
                 return Enumerable.Empty<string>();
             }
 
-            if (!_isInitialized)
+            if (!isInitialized)
             {
-                _logger.LogWarning("匹配请求: 匹配器未初始化");
+                _logger.LogWarning($"匹配请求: {type}匹配器未初始化");
                 return Enumerable.Empty<string>();
             }
 
-            // 尝试从缓存获取
-            if (_cache.TryGetValue(prefix, out var cachedResult))
+            if (cache.TryGetValue(prefix, out var cachedResult))
             {
-                _logger.LogInformation($"缓存命中: 前缀 '{prefix}' -> {cachedResult.Count} 个结果");
+                _logger.LogInformation($"缓存命中: {type}前缀 '{prefix}' -> {cachedResult.Count} 个结果");
                 return cachedResult;
             }
 
             _lock.EnterReadLock();
             try
             {
-                _logger.LogInformation($"匹配请求: 前缀 '{prefix}'");
+                _logger.LogInformation($"匹配请求: {type}前缀 '{prefix}'");
 
-                // 调用原生匹配器
-                var matches = _matcher.GetMatches(prefix)
+                var matches = matcher.GetMatches(prefix)
                     .Cast<string>()
                     .OrderBy(word => word)
                     .ToList();
 
-                _logger.LogInformation($"匹配结果: 前缀 '{prefix}' -> {matches.Count} 个结果");
+                _logger.LogInformation($"匹配结果: {type}前缀 '{prefix}' -> {matches.Count} 个结果");
 
-                // 记录匹配结果用于调试
-                if (matches.Any())
-                {
-                    _logger.LogDebug($"匹配结果: {string.Join(", ", matches)}");
-                }
-
-                // 缓存结果（特别是短前缀）
                 if (prefix.Length <= 3)
                 {
-                    _cache[prefix] = matches;
+                    cache[prefix] = matches;
                 }
 
                 return matches;
@@ -104,7 +133,8 @@ namespace NewsInsight.Api.Services
 
         public void ClearCache()
         {
-            _cache.Clear();
+            _categoryCache.Clear();
+            _topicCache.Clear();
         }
     }
 }

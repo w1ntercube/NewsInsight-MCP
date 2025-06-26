@@ -9,155 +9,182 @@
 
 <button class="back-button" @onclick="GoBackToHomePage">返回主页</button>
 
-<div class="tab-group">
-    <button class="@(activeTab == "browse" ? "active" : "")" @onclick="@(() => SwitchTab("browse"))">
-        浏览新闻
-    </button>
-    <button class="@(activeTab == "details" ? "active" : "")" @onclick="@(() => SwitchTab("details"))">
-        查看新闻详情
-    </button>
+<div class="news-container">
+    <div class="filters">
+        <!-- 类别输入框 -->
+        <div class="filter-group">
+            <label>类别：</label>
+            <input type="text" @bind="categoryInput" @oninput="HandleCategoryInput" placeholder="输入类别（如：sports）"
+                @onfocus="ShowCategorySuggestions" @onblur="HideCategorySuggestions" />
+
+            @if (showCategorySuggestions && matchedCategories.Any())
+            {
+                <div class="suggestion-box">
+                    @foreach (var cat in matchedCategories)
+                    {
+                        <div class="suggestion-item" @onclick="() => SelectCategory(cat)"
+                            @onmouseover="() => SetHoverCategory(cat)" @onmouseout="() => SetHoverCategory(null)">
+                            @cat
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- 主题输入框 -->
+        <div class="filter-group">
+            <label>主题：</label>
+            <input type="text" @bind="topicInput" @oninput="HandleTopicInput" placeholder="输入主题（如：basketball）"
+                @onfocus="ShowTopicSuggestions" @onblur="HideTopicSuggestions" />
+
+            @if (showTopicSuggestions && matchedTopics.Any())
+            {
+                <div class="suggestion-box">
+                    @foreach (var topic in matchedTopics)
+                    {
+                        <div class="suggestion-item" @onclick="() => SelectTopic(topic)"
+                            @onmouseover="() => SetHoverTopic(topic)" @onmouseout="() => SetHoverTopic(null)">
+                            @topic
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="filter-group">
+            <label>关键词：</label>
+            <input type="text" @bind="keyword" placeholder="搜索标题或内容" />
+        </div>
+
+        <div class="filter-group">
+            <label>排序依据：</label>
+            <select @bind="sortBy">
+                <option value="released">发布时间</option>
+                <option value="popularity">浏览数</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>降序：</label>
+            <input type="checkbox" @bind="sortDesc" />
+        </div>
+
+        <div class="filter-group">
+            <button class="apply-button" @onclick="ApplyFilters">应用筛选</button>
+            <button class="clear-button" @onclick="ClearFilters">清除筛选</button>
+        </div>
+    </div>
+
+    <div class="news-list">
+        <h4>新闻列表 (第 @pageNumber 页 / 共 @totalPages 页)</h4>
+
+        @if (isLoading)
+        {
+            <p class="loading-indicator">正在加载新闻...</p>
+        }
+        else if (newsList == null || !newsList.Any())
+        {
+            <p class="no-results">没有找到新闻。请尝试不同的筛选条件。</p>
+        }
+        else
+        {
+            <table class="news-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>标题</th>
+                        <th>类别</th>
+                        <th>主题</th>
+                        <th>发布时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var newsItem in newsList)
+                    {
+                        <tr>
+                            <td>
+                                <button class="id-link" @onclick="() => ShowNewsDetail(newsItem.Id)">
+                                    @newsItem.Id
+                                </button>
+                            </td>
+                            <td>@newsItem.Headline</td>
+                            <td>@newsItem.Category</td>
+                            <td>@newsItem.Topic</td>
+                            <td>@newsItem.ReleasedTime.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="pagination">
+            <button class="pagination-button" @onclick="PreviousPage" disabled="@(!CanGoBack || isLoading)">上一页</button>
+            <span>第 @pageNumber 页 / 共 @totalPages 页</span>
+            <button class="pagination-button" @onclick="NextPage" disabled="@(!CanGoNext || isLoading)">下一页</button>
+        </div>
+    </div>
 </div>
 
-@if (activeTab == "browse")
+@if (showDetailModal)
 {
-    <div class="news-browse">
-        <div class="filters">
-            <div class="filter-group">
-                <label>类别：</label>
-                <input type="text" @bind="categoryInput" @oninput="HandleCategoryInput" placeholder="输入类别（如：sports）"
-                    @onfocus="ShowCategorySuggestions" @onblur="HideCategorySuggestions" />
+    <div class="modal-overlay" @onclick="CloseDetailModal">
+        <div class="modal-content" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h4>@selectedNews?.Headline</h4>
+                <button class="close-button" @onclick="CloseDetailModal">&times;</button>
+            </div>
 
-                @if (showCategorySuggestions && matchedCategories.Any())
+            <div class="modal-body">
+                @if (isDetailsLoading)
                 {
-                    <div class="suggestion-box">
-                        @foreach (var cat in matchedCategories)
-                        {
-                            <div class="suggestion-item" @onclick="() => SelectCategory(cat)"
-                                @onmouseover="() => SetHoverCategory(cat)" @onmouseout="() => SetHoverCategory(null)">
-                                @cat
-                            </div>
-                        }
+                    <p class="loading-indicator">正在加载新闻详情...</p>
+                }
+                else if (selectedNews != null)
+                {
+                    <div class="news-detail-card">
+                        <div class="detail-row">
+                            <span class="label">ID:</span>
+                            <span>@selectedNews.Id</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">类别:</span>
+                            <span>@selectedNews.Category</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">主题:</span>
+                            <span>@selectedNews.Topic</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">发布时间:</span>
+                            <span>@selectedNews.ReleasedTime.ToString("yyyy-MM-dd HH:mm")</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">浏览数:</span>
+                            <span>@selectedNews.BrowseCount</span>
+                        </div>
+                        <div class="content-section">
+                            <h5>内容:</h5>
+                            <p>@selectedNews.Content</p>
+                        </div>
                     </div>
+                }
+                else if (hasSearched)
+                {
+                    <p class="no-results">无法加载新闻详情。</p>
                 }
             </div>
 
-            <div class="filter-group">
-                <label>关键词：</label>
-                <input type="text" @bind="keyword" placeholder="搜索标题或内容" />
-            </div>
-
-            <div class="filter-group">
-                <label>排序依据：</label>
-                <select @bind="sortBy">
-                    <option value="released">发布时间</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label>降序：</label>
-                <input type="checkbox" @bind="sortDesc" />
-            </div>
-
-            <div class="filter-group">
-                <button class="apply-button" @onclick="ApplyFilters">应用筛选</button>
+            <div class="modal-footer">
+                <button class="modal-button" @onclick="CloseDetailModal">关闭</button>
             </div>
         </div>
-
-        <div class="news-list">
-            <h4>新闻列表 (第 @pageNumber 页 / 共 @totalPages 页)</h4>
-
-            @if (isLoading)
-            {
-                <p>正在加载新闻...</p>
-            }
-            else if (newsList == null || !newsList.Any())
-            {
-                <p>没有找到新闻。请尝试不同的筛选条件。</p>
-            }
-            else
-            {
-                <table class="news-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>标题</th>
-                            <th>类别</th>
-                            <th>话题</th>
-                            <th>发布时间</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var newsItem in newsList)
-                        {
-                            <tr>
-                                <td>@newsItem.Id</td>
-                                <td>@newsItem.Headline</td>
-                                <td>@newsItem.Category</td>
-                                <td>@newsItem.Topic</td>
-                                <td>@newsItem.ReleasedTime.ToString("yyyy-MM-dd HH:mm")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-
-            <div class="pagination">
-                <button class="pagination-button" @onclick="PreviousPage" disabled="@(!CanGoBack || isLoading)">上一页</button>
-                <span>第 @pageNumber 页 / 共 @totalPages 页</span>
-                <button class="pagination-button" @onclick="NextPage" disabled="@(!CanGoNext || isLoading)">下一页</button>
-            </div>
-        </div>
-    </div>
-}
-else if (activeTab == "details")
-{
-    <div class="news-details">
-        <div class="id-search">
-            <label>输入新闻ID：</label>
-            <input type="number" @bind="searchId" />
-            <button class="search-button" @onclick="GetNewsDetails">搜索</button>
-        </div>
-
-        @if (isDetailsLoading)
-        {
-            <p>正在加载新闻详情...</p>
-        }
-        else if (selectedNews != null)
-        {
-            <div class="news-detail-card">
-                <h4>@selectedNews.Headline</h4>
-                <div class="detail-row">
-                    <span class="label">ID:</span>
-                    <span>@selectedNews.Id</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">类别:</span>
-                    <span>@selectedNews.Category</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">话题:</span>
-                    <span>@selectedNews.Topic</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">发布时间:</span>
-                    <span>@selectedNews.ReleasedTime.ToString("yyyy-MM-dd HH:mm")</span>
-                </div>
-                <div class="content-section">
-                    <h5>内容:</h5>
-                    <p>@selectedNews.Content</p>
-                </div>
-            </div>
-        }
-        else if (hasSearched)
-        {
-            <p>没有找到ID为 @searchId 的新闻。</p>
-        }
     </div>
 }
 
 @code {
-    private string activeTab = "browse";
+    // 状态变量
     private string? category;
+    private string? topic;
     private string? keyword;
     private string sortBy = "released";
     private bool sortDesc = true;
@@ -165,26 +192,34 @@ else if (activeTab == "details")
     private int totalPages = 1;
     private const int pageSize = 10;
 
-    // Loading states
+    // 加载状态
     private bool isLoading = false;
     private bool isDetailsLoading = false;
-
-    private List<NewsDto> newsList = new List<NewsDto>();
-    private int? searchId;
-    private NewsDto? selectedNews;
     private bool hasSearched = false;
 
-    // Pagination control
+    // 新闻数据
+    private List<NewsDto> newsList = new List<NewsDto>();
+    private NewsDto? selectedNews;
+    private bool showDetailModal = false;
+
+    // 分页控制
     private bool CanGoBack => pageNumber > 1;
     private bool CanGoNext => pageNumber < totalPages;
 
-    // Category suggestions
+    // 类别建议相关
     private string categoryInput = string.Empty;
     private List<string> matchedCategories = new();
     private bool showCategorySuggestions = false;
-    private string? hoverCategory = null;
-    private System.Timers.Timer? suggestionTimer;
     private bool isCategorySelected = false;
+
+    // 主题建议相关
+    private string topicInput = string.Empty;
+    private List<string> matchedTopics = new();
+    private bool showTopicSuggestions = false;
+    private bool isTopicSelected = false;
+
+    // 防抖计时器
+    private System.Timers.Timer? suggestionTimer;
 
     protected override void OnInitialized()
     {
@@ -192,9 +227,23 @@ else if (activeTab == "details")
         suggestionTimer.AutoReset = false;
         suggestionTimer.Elapsed += async (sender, e) =>
         {
-            await FetchCategorySuggestions();
+            // 获取类别建议
+            if (!string.IsNullOrWhiteSpace(categoryInput) && !isCategorySelected)
+            {
+                await FetchCategorySuggestions();
+            }
+
+            // 获取主题建议
+            if (!string.IsNullOrWhiteSpace(topicInput) && !isTopicSelected)
+            {
+                await FetchTopicSuggestions();
+            }
+
             await InvokeAsync(StateHasChanged);
         };
+
+        // 初始加载新闻
+        _ = FetchNews();
     }
 
     public void Dispose()
@@ -202,17 +251,7 @@ else if (activeTab == "details")
         suggestionTimer?.Dispose();
     }
 
-    private async Task ApplyFilters()
-    {
-        pageNumber = 1;
-        await FetchNews();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await FetchNews();
-    }
-
+    // ===== 新闻列表相关方法 =====
     private async Task FetchNews()
     {
         try
@@ -223,6 +262,7 @@ else if (activeTab == "details")
             var queryParams = new Dictionary<string, string?>
 {
 { "category", category },
+{ "topic", topic },
 { "keyword", keyword },
 { "sortBy", sortBy },
 { "sortDesc", sortDesc.ToString() },
@@ -230,11 +270,12 @@ else if (activeTab == "details")
 { "pageSize", pageSize.ToString() }
 };
 
-            // 移除空参数
+            // 构建有效查询参数
             var validParams = queryParams
             .Where(p => !string.IsNullOrEmpty(p.Value))
             .ToDictionary(p => p.Key, p => p.Value);
 
+            // 发送请求
             var response = await Http.GetFromJsonAsync<PaginatedResponse<NewsDto>>(
             $"api/news?{await new FormUrlEncodedContent(validParams).ReadAsStringAsync()}");
 
@@ -252,32 +293,6 @@ else if (activeTab == "details")
         finally
         {
             isLoading = false;
-        }
-    }
-
-    private async Task GetNewsDetails()
-    {
-        hasSearched = true;
-        if (searchId == null || searchId <= 0)
-        {
-            selectedNews = null;
-            return;
-        }
-
-        try
-        {
-            isDetailsLoading = true;
-            StateHasChanged();
-
-            selectedNews = await Http.GetFromJsonAsync<NewsDto>($"api/news/{searchId}");
-        }
-        catch
-        {
-            selectedNews = null;
-        }
-        finally
-        {
-            isDetailsLoading = false;
         }
     }
 
@@ -299,29 +314,44 @@ else if (activeTab == "details")
         }
     }
 
-    private async void SwitchTab(string tabName)
+    // ===== 筛选相关方法 =====
+    private async Task ApplyFilters()
     {
-        activeTab = tabName;
-        if (tabName == "browse")
-        {
-            selectedNews = null;
-            hasSearched = false;
-            pageNumber = 1;
-            await FetchNews();
-        }
+        pageNumber = 1; // 重置到第一页
+        await FetchNews();
     }
 
-    private void GoBackToHomePage()
+    private async Task ClearFilters()
     {
-        NavigationManager.NavigateTo("/");
+        // 重置类别
+        category = null;
+        categoryInput = string.Empty;
+        isCategorySelected = false;
+        showCategorySuggestions = false;
+        matchedCategories.Clear();
+
+        // 重置主题
+        topic = null;
+        topicInput = string.Empty;
+        isTopicSelected = false;
+        showTopicSuggestions = false;
+        matchedTopics.Clear();
+
+        // 重置其他筛选条件
+        keyword = null;
+        sortBy = "released";
+        sortDesc = true;
+
+        // 重新加载数据
+        pageNumber = 1;
+        await FetchNews();
     }
 
+    // ===== 类别建议相关方法 =====
     private void HandleCategoryInput(ChangeEventArgs e)
     {
         categoryInput = e.Value?.ToString() ?? string.Empty;
         isCategorySelected = false;
-
-        // 重置并启动防抖计时器
         suggestionTimer?.Stop();
         suggestionTimer?.Start();
     }
@@ -329,16 +359,14 @@ else if (activeTab == "details")
     private void ShowCategorySuggestions()
     {
         showCategorySuggestions = true;
-        // 立即获取当前输入的建议
         if (!string.IsNullOrWhiteSpace(categoryInput))
         {
             _ = FetchCategorySuggestions();
         }
     }
-    
+
     private async void HideCategorySuggestions()
     {
-        // 短暂延迟以允许点击事件处理
         await Task.Delay(200);
         if (!isCategorySelected)
         {
@@ -357,7 +385,6 @@ else if (activeTab == "details")
 
         try
         {
-            // 使用当前输入值获取建议
             var prefix = categoryInput.Trim();
             var response = await Http.GetAsync(
             $"api/news/categories/match?prefix={Uri.EscapeDataString(prefix)}");
@@ -372,7 +399,6 @@ else if (activeTab == "details")
                 matchedCategories = new List<string>();
             }
 
-            // 只有在有匹配结果时才显示建议框
             showCategorySuggestions = matchedCategories.Any();
         }
         catch (Exception ex)
@@ -385,19 +411,125 @@ else if (activeTab == "details")
 
     private void SetHoverCategory(string? category)
     {
-        hoverCategory = category;
+        // 可选：添加悬停效果
     }
 
-
-    private async Task SelectCategory(string category)
+    private async Task SelectCategory(string selectedCategory)
     {
-        // 更新输入框和筛选条件
-        this.category = category;
-        categoryInput = category;
+        category = selectedCategory;
+        categoryInput = selectedCategory;
         isCategorySelected = true;
         showCategorySuggestions = false;
-
-        // 立即应用筛选
         await ApplyFilters();
+    }
+
+    // ===== 主题建议相关方法 =====
+    private void HandleTopicInput(ChangeEventArgs e)
+    {
+        topicInput = e.Value?.ToString() ?? string.Empty;
+        isTopicSelected = false;
+        suggestionTimer?.Stop();
+        suggestionTimer?.Start();
+    }
+
+    private void ShowTopicSuggestions()
+    {
+        showTopicSuggestions = true;
+        if (!string.IsNullOrWhiteSpace(topicInput))
+        {
+            _ = FetchTopicSuggestions();
+        }
+    }
+
+    private async void HideTopicSuggestions()
+    {
+        await Task.Delay(200);
+        if (!isTopicSelected)
+        {
+            showTopicSuggestions = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FetchTopicSuggestions()
+    {
+        if (string.IsNullOrWhiteSpace(topicInput) || isTopicSelected)
+        {
+            matchedTopics.Clear();
+            return;
+        }
+
+        try
+        {
+            var prefix = topicInput.Trim();
+            var response = await Http.GetAsync(
+            $"api/news/topics/match?prefix={Uri.EscapeDataString(prefix)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                matchedTopics = await response.Content.ReadFromJsonAsync<List<string>>()
+                ?? new List<string>();
+            }
+            else
+            {
+                matchedTopics = new List<string>();
+            }
+
+            showTopicSuggestions = matchedTopics.Any();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"获取主题建议失败: {ex.Message}");
+            matchedTopics = new List<string>();
+            showTopicSuggestions = false;
+        }
+    }
+
+    private void SetHoverTopic(string? topic)
+    {
+        // 可选：添加悬停效果
+    }
+
+    private async Task SelectTopic(string selectedTopic)
+    {
+        topic = selectedTopic;
+        topicInput = selectedTopic;
+        isTopicSelected = true;
+        showTopicSuggestions = false;
+        await ApplyFilters();
+    }
+
+    // ===== 新闻详情相关方法 =====
+    private async Task ShowNewsDetail(int id)
+    {
+        showDetailModal = true;
+        isDetailsLoading = true;
+        hasSearched = true;
+        StateHasChanged();
+
+        try
+        {
+            selectedNews = await Http.GetFromJsonAsync<NewsDto>($"api/news/{id}");
+        }
+        catch
+        {
+            selectedNews = null;
+        }
+        finally
+        {
+            isDetailsLoading = false;
+        }
+    }
+
+    private void CloseDetailModal()
+    {
+        showDetailModal = false;
+        selectedNews = null;
+    }
+
+    // ===== 导航方法 =====
+    private void GoBackToHomePage()
+    {
+        NavigationManager.NavigateTo("/");
     }
 }
