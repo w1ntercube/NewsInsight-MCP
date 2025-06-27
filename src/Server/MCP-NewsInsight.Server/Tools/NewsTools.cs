@@ -30,7 +30,7 @@ namespace MCPNewsInsight.Server.Tools
             [Description("新闻的标题")] string headline)
         {
             // 使用直接键访问连接字符串
-            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"] ?? string.Empty;
             
             if (string.IsNullOrWhiteSpace(connectionString))
             {
@@ -77,7 +77,7 @@ namespace MCPNewsInsight.Server.Tools
         public async Task<string> GetNewsById(
             [Description("新闻的唯一ID")] int newsId)
         {
-            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"] ?? string.Empty;
             
             try
             {
@@ -122,7 +122,7 @@ namespace MCPNewsInsight.Server.Tools
             [Description("用于搜索的关键词，可以是多个词")] string keywords,
             [Description("指定返回的新闻条目数，默认为5")] int num = 5)
         {
-            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"] ?? string.Empty;
             var results = new List<string>();
 
             try
@@ -160,12 +160,13 @@ namespace MCPNewsInsight.Server.Tools
             return results;
         }
 
+        // 获取随机新闻标题
         [McpServerTool, Description("根据分类获取新闻标题")]
         public async Task<List<string>> GetNewsByCategory(
             [Description("新闻分类")] string category,
             [Description("返回数量，默认5条")] int num = 5)
         {
-            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"] ?? string.Empty;
             var headlines = new List<string>();
 
             try

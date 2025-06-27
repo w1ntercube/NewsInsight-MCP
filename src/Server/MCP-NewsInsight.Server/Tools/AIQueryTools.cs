@@ -45,17 +45,17 @@ namespace MCPNewsInsight.Server.Tools
         {
             try
             {
-                // 1. 验证SQL安全性
+                // 验证SQL安全性
                 if (!IsSqlSafe(sqlQuery))
                 {
                     _logger.LogWarning($"不安全的SQL查询被拒绝: {sqlQuery}");
                     return "错误：查询包含不安全操作";
                 }
                 
-                // 2. 执行SQL查询
+                // 执行SQL查询
                 var results = await ExecuteSqlQuery(sqlQuery);
                 
-                // 3. 格式化为自然语言结果
+                // 格式化为自然语言结果
                 return FormatResultsForUser(results);
             }
             catch (Exception ex)
@@ -70,13 +70,13 @@ namespace MCPNewsInsight.Server.Tools
             // 转换为小写以方便检查
             string lowerSql = sql.ToLower().Trim();
             
-            // 1. 检查是否以SELECT开头
+            // 检查是否以SELECT开头
             if (!lowerSql.StartsWith("select"))
             {
                 return false;
             }
             
-            // 2. 禁止危险关键词
+            // 禁止危险关键词
             string[] forbiddenKeywords = { 
                 "insert", "update", "delete", "drop", "alter", 
                 "create", "truncate", "grant", "exec", "xp_", 
@@ -91,7 +91,7 @@ namespace MCPNewsInsight.Server.Tools
                 }
             }
             
-            // 3. 检查是否访问了其他表
+            // 检查是否访问了其他表
             if (Regex.IsMatch(lowerSql, @"\bfrom\s+[^\s]+\b"))
             {
                 var matches = Regex.Matches(lowerSql, @"\bfrom\s+([^\s\(\)\,]+)");
@@ -107,7 +107,7 @@ namespace MCPNewsInsight.Server.Tools
                 }
             }
             
-            // 4. 检查是否使用了LIMIT
+            // 检查是否使用了LIMIT
             if (!Regex.IsMatch(lowerSql, @"\blimit\s+\d+", RegexOptions.IgnoreCase))
             {
                 // 自动添加LIMIT 10
@@ -119,7 +119,7 @@ namespace MCPNewsInsight.Server.Tools
 
         private async Task<List<NewsItem>> ExecuteSqlQuery(string sql)
         {
-            string connectionString = _configuration["ConnectionStrings:DefaultConnection"];
+            string connectionString = _configuration["ConnectionStrings:DefaultConnection"] ?? string.Empty;
             var results = new List<NewsItem>();
 
             using var connection = new MySqlConnection(connectionString);
@@ -143,19 +143,6 @@ namespace MCPNewsInsight.Server.Tools
             return results;
         }
 
-        private string GetStringSafe(MySqlDataReader reader, string columnName)
-        {
-            try
-            {
-                int ordinal = reader.GetOrdinal(columnName);
-                return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal);
-            }
-            catch
-            {
-                return $"列 '{columnName}' 不存在";
-            }
-        }
-
         private string FormatResultsForUser(List<NewsItem> results)
         {
             if (results.Count == 0)
@@ -167,7 +154,7 @@ namespace MCPNewsInsight.Server.Tools
             {
                 response += $"**{item.Headline}**\n";
                 response += $"分类: {item.Category} | 话题: {item.Topic}\n";
-                response += $"{TruncateContent(item.Content, 100)}\n\n";
+                response += $"{TruncateContent(item.Content ?? string.Empty, 100)}\n\n";
             }
             
             return response;
@@ -185,10 +172,10 @@ namespace MCPNewsInsight.Server.Tools
         
         private class NewsItem
         {
-            public string Headline { get; set; }
-            public string Content { get; set; }
-            public string Category { get; set; }
-            public string Topic { get; set; }
+            public string? Headline { get; set; }
+            public string? Content { get; set; }
+            public string? Category { get; set; }
+            public string? Topic { get; set; }
         }
     }
 }

@@ -40,6 +40,9 @@ artifacts/
 bin/
 obj/
 
+# 发布包
+publish/
+
 # 发布/调试输出
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -80,3 +83,4 @@ Makefile
 
 # VS Code 编辑器的工作目录
 .vscode/
+idea.md
