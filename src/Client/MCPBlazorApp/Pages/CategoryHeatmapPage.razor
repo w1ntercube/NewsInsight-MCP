@@ -31,7 +31,7 @@
     </div>
 </div>
 
-<!-- 图表容器 - 添加了 compact 类 -->
+<!-- 图表容器 -->
 <div class="chart-container compact">
     <div class="chart-controls">
         <label>图表类型：</label>
@@ -46,10 +46,10 @@
             <option value="browseDuration">浏览时长</option>
         </select>
 
-        <button class="toggle-button" @onclick="ToggleDataTable">@(showDataTable? "隐藏数据表格" : "显示数据表格")</button>
+        <button class="toggle-button" @onclick="ToggleDataTable">@(showDataTable ? "隐藏数据表格" : "显示数据表格")</button>
     </div>
 
-    <!-- 添加了紧凑型图表容器 -->
+    <!-- 图表容器 -->
     <div class="chart-wrapper">
         <canvas id="heatmapChart" class="heatmap-chart compact"></canvas>
     </div>
@@ -110,8 +110,15 @@
     {
         if (firstRender)
         {
-            // 直接调用全局函数
-            await JSRuntime.InvokeVoidAsync("initializeHeatmapChart");
+            try
+            {
+                // 直接调用全局函数
+                await JSRuntime.InvokeVoidAsync("initializeHeatmapChart");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"初始化图表时出错: {ex.Message}");
+            }
         }
     }
     
@@ -160,7 +167,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching heatmap data: {ex.Message}");
+            Console.WriteLine($"加载热度数据出错: {ex.Message}");
             heatmapData = new List<CategoryHeatmapDayDto>();
         }
         finally
@@ -175,8 +182,8 @@
     {
         if (heatmapData != null && heatmapData.Any())
         {
-            var labels = heatmapData.Select(d => d.Date.ToString("MM-dd")).ToList();
-            var datasets = new List<object>();
+            // 准备时间轴数据 - 使用 Date 对象
+            var timeAxis = heatmapData.Select(d => d.Date).ToList();
             
             // 获取所有类别
             var categories = heatmapData
@@ -184,6 +191,8 @@
                 .Select(c => c.Category)
                 .Distinct()
                 .ToList();
+            
+            var datasets = new List<object>();
             
             foreach (var category in categories)
             {
@@ -224,9 +233,26 @@
                 });
             }
             
-            // 直接调用全局函数
-            await JSRuntime.InvokeVoidAsync("updateHeatmapChart", chartType, labels, datasets, 
-                dataMetric == "browseCount" ? "浏览次数" : "浏览时长 (小时)");
+            // 计算时间跨度（天数）
+            var timeSpanDays = (endDate - startDate).Days;
+            
+            // 根据时间跨度确定时间单位
+            var timeUnit = timeSpanDays > 60 ? "month" : 
+                          timeSpanDays > 30 ? "week" : 
+                          timeSpanDays > 14 ? "day" : 
+                          "day";
+            
+            try
+            {
+                // 调用JavaScript更新图表
+                await JSRuntime.InvokeVoidAsync("updateHeatmapChart", chartType, timeAxis, datasets, 
+                    dataMetric == "browseCount" ? "浏览次数" : "浏览时长 (小时)",
+                    timeUnit);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"更新图表时出错: {ex.Message}");
+            }
         }
     }
     

@@ -1,124 +1,183 @@
-// 确保在全局作用域中定义 heatmapChartInstance
+// 全局图表实例
 let heatmapChartInstance = null;
 
 // 初始化图表函数
-window.initializeHeatmapChart = function () {
-    console.log("Initializing heatmap chart...");
+window.initializeHeatmapChart = function() {
     const ctx = document.getElementById('heatmapChart');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error("无法找到 heatmapChart 元素");
+        return;
+    }
     
-    heatmapChartInstance = new Chart(ctx.getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: []
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: '类别热度趋势图',
-                    font: {
-                        size: 18
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
-                },
-                legend: {
-                    position: 'top',
-                }
+    try {
+        heatmapChartInstance = new Chart(ctx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: []
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
                     title: {
                         display: true,
-                        text: '浏览次数'
+                        text: '类别热度趋势图',
+                        font: {
+                            size: 18
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toLocaleString();
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top',
                     }
                 },
-                x: {
-                    title: {
-                        display: true,
-                        text: '日期'
-                    }
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'nearest'
-            }
-        }
-    });
-};
-
-// 更新图表函数
-window.updateHeatmapChart = function(type, labels, datasets, yAxisTitle) {
-    if (!heatmapChartInstance) return;
-    
-    // 销毁旧图表实例
-    heatmapChartInstance.destroy();
-    
-    const ctx = document.getElementById('heatmapChart').getContext('2d');
-    heatmapChartInstance = new Chart(ctx, {
-        type: type,
-        data: {
-            labels: labels,
-            datasets: datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: '类别热度趋势图',
-                    font: {
-                        size: 18
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: {
+                                day: 'MM-dd',
+                                week: 'MMM dd',
+                                month: 'yyyy-MM'
                             }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y.toLocaleString();
-                            }
-                            return label;
+                        },
+                        title: {
+                            display: true,
+                            text: '日期'
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '浏览次数'
                         }
                     }
                 },
-                legend: {
-                    position: 'top',
+                interaction: {
+                    intersect: false,
+                    mode: 'nearest'
                 }
+            }
+        });
+        console.log("图表初始化成功");
+    } catch (error) {
+        console.error("图表初始化失败:", error);
+    }
+};
+
+// 更新图表函数
+window.updateHeatmapChart = function(type, timeAxis, datasets, yAxisTitle, timeUnit) {
+    if (!heatmapChartInstance) {
+        console.error("图表实例未初始化");
+        return;
+    }
+    
+    try {
+        // 销毁旧图表实例
+        heatmapChartInstance.destroy();
+        
+        const ctx = document.getElementById('heatmapChart').getContext('2d');
+        
+        // 创建新的图表实例
+        heatmapChartInstance = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: timeAxis, // 这里确保 timeAxis 是 Date 对象的数组
+                datasets: datasets
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
                     title: {
                         display: true,
-                        text: yAxisTitle
+                        text: '类别热度趋势图',
+                        font: {
+                            size: 18
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toLocaleString();
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top',
                     }
                 },
-                x: {
-                    title: {
-                        display: true,
-                        text: '日期'
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: timeUnit,
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: {
+                                day: 'MM-dd',
+                                week: 'MMM dd',
+                                month: 'yyyy-MM'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '日期'
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            autoSkip: true,
+                            maxTicksLimit: 20
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: yAxisTitle
+                        }
                     }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'nearest'
                 }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'nearest'
             }
-        }
-    });
+        });
+        console.log("图表更新成功");
+    } catch (error) {
+        console.error("图表更新失败:", error);
+    }
 };

@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @using NewsInsight.Shared.Models.DTOs
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <h3 class="page-title">用户兴趣分布</h3>
 
@@ -26,53 +27,83 @@
     </div>
 
     <div class="filter-group">
+        <label>数据指标：</label>
+        <select @bind="dataMetric">
+            <option value="clicks">点击数</option>
+            <option value="dwellTime">停留时长</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
         <button class="apply-button" @onclick="FetchUserInterestDistribution">获取分布</button>
     </div>
 </div>
 
-@if (interestDistributionData != null && interestDistributionData.Any())
-{
-    <div class="distribution-result">
-        <h4>从 @startDate 到 @endDate 的用户兴趣分布</h4>
+<!-- 图表容器 -->
+<div class="chart-container">
+    <div class="pie-chart-container">
+        <canvas id="interestPieChart"></canvas>
+    </div>
+</div>
 
-        <table class="distribution-table">
-            <thead>
-                <tr>
-                    <th>类别</th>
-                    <th>总点击数</th>
-                    <th>总停留时长</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in interestDistributionData)
-                {
-                    <tr>
-                        <td>@item.Category</td>
-                        <td>@item.TotalClicks</td>
-                        <td>@item.TotalDwellTime</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+@if (isLoading)
+{
+    <div class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>正在加载数据...</p>
     </div>
 }
 
-@if (interestDistributionData == null || !interestDistributionData.Any())
-{
-    <p>未找到符合条件的数据。</p>
-}
-
 @code {
-    private int userId = 1;  // 默认用户ID
-    private DateTime startDate = new DateTime(2019, 6, 13);  // 默认开始日期
-    private DateTime endDate = new DateTime(2019, 6, 30);    // 默认结束日期
+    private int userId = 1;
+    private DateTime startDate = new DateTime(2019, 6, 13);
+    private DateTime endDate = new DateTime(2019, 6, 26);
     private List<InterestDistributionItemDto> interestDistributionData = new List<InterestDistributionItemDto>();
+    private bool isLoading = false;
+    private string dataMetric = "clicks";
+    private int totalClicks = 0;
+    private int totalDwellTime = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // 初始化图表
+            await JSRuntime.InvokeVoidAsync("initializePieChart");
+        }
+    }
+    
+    // 格式化停留时长
+    private static string FormatDuration(int seconds)
+    {
+        if (seconds < 60) return $"{seconds}秒";
+        
+        int minutes = seconds / 60;
+        int remainingSeconds = seconds % 60;
+        
+        if (minutes < 60) return $"{minutes}分{remainingSeconds}秒";
+        
+        int hours = minutes / 60;
+        int remainingMinutes = minutes % 60;
+        
+        return $"{hours}小时{remainingMinutes}分{remainingSeconds}秒";
+    }
+    
+    // 计算百分比
+    private static string CalculatePercentage(int value, int total)
+    {
+        if (total == 0) return "0.00";
+        return ((double)value / total * 100).ToString("F2");
+    }
 
     // 获取用户兴趣分布数据
     private async Task FetchUserInterestDistribution()
     {
         try
         {
+            isLoading = true;
+            StateHasChanged();
+            
             var queryParams = new Dictionary<string, string?>
             {
                 { "userId", userId.ToString() },
@@ -86,17 +117,88 @@
             if (response != null)
             {
                 interestDistributionData = response.Distribution;
+                totalClicks = interestDistributionData.Sum(i => i.TotalClicks);
+                totalDwellTime = interestDistributionData.Sum(i => i.TotalDwellTime);
+                await UpdatePieChart();
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching user interest distribution: {ex.Message}");
+            Console.WriteLine($"获取用户兴趣分布数据出错: {ex.Message}");
             interestDistributionData = new List<InterestDistributionItemDto>();
         }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
-
+    
+    // 更新饼状图
+    private async Task UpdatePieChart()
+    {
+        if (interestDistributionData != null && interestDistributionData.Any())
+        {
+            var labels = interestDistributionData.Select(i => i.Category).ToArray();
+            var backgroundColors = GenerateColors(interestDistributionData.Count);
+            
+            // 准备额外数据用于悬停提示
+            var extraData = interestDistributionData.Select(item => new {
+                clicks = item.TotalClicks,
+                dwellTime = item.TotalDwellTime,
+                clicksPercentage = CalculatePercentage(item.TotalClicks, totalClicks),
+                dwellTimePercentage = CalculatePercentage(item.TotalDwellTime, totalDwellTime),
+                formattedDwellTime = FormatDuration(item.TotalDwellTime)
+            }).ToArray();
+            
+            // 根据选择的指标准备数据
+            var data = dataMetric == "clicks" 
+                ? interestDistributionData.Select(i => i.TotalClicks).ToArray()
+                : interestDistributionData.Select(i => i.TotalDwellTime).ToArray();
+            
+            var dataset = new {
+                data = data,
+                backgroundColor = backgroundColors,
+                borderColor = "#ffffff",
+                borderWidth = 1,
+                extraData = extraData  // 添加额外数据用于悬停提示
+            };
+            
+            var title = dataMetric == "clicks" 
+                ? $"用户兴趣分布 (点击数)" 
+                : $"用户兴趣分布 (停留时长)";
+            
+            var subtitle = $"{startDate:yyyy-MM-dd} 到 {endDate:yyyy-MM-dd}";
+            
+            // 调用JavaScript更新饼图
+            await JSRuntime.InvokeVoidAsync("updatePieChart", labels, new[] { dataset }, title, subtitle);
+        }
+    }
+    
+    // 生成颜色数组
+    private string[] GenerateColors(int count)
+    {
+        var colors = new string[count];
+        for (int i = 0; i < count; i++)
+        {
+            colors[i] = $"#{Random.Shared.Next(0x1000000):X6}";
+        }
+        return colors;
+    }
+    
+    // 数据指标变更处理
+    private async Task OnDataMetricChanged(ChangeEventArgs e)
+    {
+        dataMetric = e.Value?.ToString() ?? "clicks";
+        if (interestDistributionData != null && interestDistributionData.Any())
+        {
+            await UpdatePieChart();
+        }
+    }
+    
+    // 返回主页
     private void GoBackToHomePage()
     {
-        NavigationManager.NavigateTo("/");  // 返回主页
+        NavigationManager.NavigateTo("/"); 
     }
 }
