@@ -181,3 +181,93 @@ window.updateHeatmapChart = function(type, timeAxis, datasets, yAxisTitle, timeU
         console.error("图表更新失败:", error);
     }
 };
+
+let trendChartInstance = null;
+
+// 统一初始化/更新函数
+window.updateTrendChart = function(type, timeAxis, datasets, yAxisTitle, timeUnit) {
+    const ctxElement = document.getElementById('trendChart');
+    if (!ctxElement) {
+        console.error("无法找到 trendChart 元素");
+        return;
+    }
+    
+    const ctx = ctxElement.getContext('2d');
+    
+    // 销毁旧实例（如果存在）
+    if (trendChartInstance) {
+        trendChartInstance.destroy();
+        trendChartInstance = null;
+    }
+    
+    try {
+        trendChartInstance = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: timeAxis,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '用户日常趋势',
+                        font: { size: 18 }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toLocaleString();
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: timeUnit,
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: {
+                                day: 'MM-dd',
+                                week: 'MMM dd',
+                                month: 'yyyy-MM'
+                            }
+                        },
+                        title: { display: true, text: '日期' },
+                        ticks: { 
+                            maxRotation: 45, 
+                            minRotation: 45, 
+                            autoSkip: true, 
+                            maxTicksLimit: 20 
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { 
+                            display: true, 
+                            text: yAxisTitle 
+                        }
+                    }
+                },
+                interaction: { 
+                    intersect: false, 
+                    mode: 'nearest' 
+                }
+            }
+        });
+        console.log("趋势图表渲染成功");
+    } catch (error) {
+        console.error("趋势图表渲染失败:", error);
+    }
+};

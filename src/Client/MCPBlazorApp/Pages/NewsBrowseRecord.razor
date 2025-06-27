@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @using NewsInsight.Shared.Models.DTOs
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <h3 class="page-title">新闻浏览记录</h3>
 
@@ -71,7 +72,7 @@
                                 <td>@record.NewsHeadline</td>
                                 <td>@record.NewsCategory</td>
                                 <td>@record.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
-                                <td>@record.Duration</td>
+                                <td>@FormatDuration(record.Duration)</td>
                             </tr>
                         }
                     </tbody>
@@ -88,6 +89,7 @@
 }
 else if (activeTab == "trend")
 {
+    <!-- Trend Tab -->
     <div class="user-daily-trend">
         <div class="filters">
             <div class="filter-group">
@@ -110,40 +112,34 @@ else if (activeTab == "trend")
             </div>
         </div>
 
-        <div class="trend-list">
-            <h4>用户日常趋势</h4>
+        <!-- 图表容器 -->
+        <div class="chart-container compact">
+            <div class="chart-controls">
+                <label>图表类型：</label>
+                <select @bind="trendChartType">
+                    <option value="line">折线图</option>
+                    <option value="bar">柱状图</option>
+                </select>
 
-            @if (isTrendLoading)
-            {
-                <p>加载趋势数据...</p>
-            }
-            else if (dailyTrends == null || !dailyTrends.Any())
-            {
-                <p>没有找到数据，请尝试不同的日期。</p>
-            }
-            else
-            {
-                <table class="trend-table">
-                    <thead>
-                        <tr>
-                            <th>日期</th>
-                            <th>浏览次数</th>
-                            <th>总时长</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var trend in dailyTrends)
-                        {
-                            <tr>
-                                <td>@trend.Date.ToString("yyyy-MM-dd")</td>
-                                <td>@trend.BrowseCount</td>
-                                <td>@trend.TotalDuration</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
+                <label>数据指标：</label>
+                <select @bind="trendDataMetric">
+                    <option value="browseCount">浏览次数</option>
+                    <option value="totalDuration">总时长</option>
+                </select>
+            </div>
+
+            <div class="chart-wrapper">
+                <canvas id="trendChart" class="trend-chart compact"></canvas>
+            </div>
         </div>
+    </div>
+}
+
+@if (isLoading || isTrendLoading)
+{
+    <div class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>正在加载数据...</p>
     </div>
 }
 
@@ -165,10 +161,37 @@ else if (activeTab == "trend")
 
     // For User Daily Trend
     private List<DailyTrendDto> dailyTrends = new List<DailyTrendDto>();
+    private string trendChartType = "line"; // Default chart type
+    private string trendDataMetric = "browseCount"; // Default metric
 
     // Pagination control
     private bool CanGoBack => pageNumber > 1;
     private bool CanGoNext => pageNumber < totalPages;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && activeTab == "browse")
+        {
+            // 首次渲染且当前是浏览记录页时自动加载数据
+            await FetchNewsBrowseRecords();
+        }
+    }
+
+    // 格式化时长
+    private string FormatDuration(int seconds)
+    {
+        if (seconds < 60) return $"{seconds}秒";
+
+        int minutes = seconds / 60;
+        int remainingSeconds = seconds % 60;
+
+        if (minutes < 60) return $"{minutes}分{remainingSeconds}秒";
+
+        int hours = minutes / 60;
+        int remainingMinutes = minutes % 60;
+
+        return $"{hours}小时{remainingMinutes}分{remainingSeconds}秒";
+    }
 
     // Apply filters and reset pagination
     private async Task ApplyBrowseFilters()
@@ -199,7 +222,7 @@ else if (activeTab == "trend")
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching browse records: {ex.Message}");
+            Console.WriteLine($"加载浏览记录出错: {ex.Message}");
         }
         finally
         {
@@ -213,43 +236,101 @@ else if (activeTab == "trend")
         try
         {
             isTrendLoading = true;
+            StateHasChanged(); // 立即更新UI显示加载状态
 
             var response = await Http.GetFromJsonAsync<IEnumerable<DailyTrendDto>>(
-            $"http://localhost:5137/api/newsbrowserecord/user-daily-trend/{userId}" +
+            $"api/newsbrowserecord/user-daily-trend/{userId}" +
             $"?startDate={startDate:yyyy-MM-dd}" +
             $"&endDate={endDate:yyyy-MM-dd}");
 
-            if (response != null)
-            {
-                dailyTrends = response.ToList();
-            }
+            dailyTrends = response?.ToList() ?? new List<DailyTrendDto>();
+            await UpdateTrendChart();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching daily trend: {ex.Message}");
+            Console.WriteLine($"加载日常趋势出错: {ex.Message}");
         }
         finally
         {
             isTrendLoading = false;
         }
     }
+    private async Task UpdateTrendChart()
+    {
+        if (dailyTrends == null || !dailyTrends.Any())
+        {
+            // 传递空数据清空图表
+            await JSRuntime.InvokeVoidAsync(
+            "updateTrendChart",
+            trendChartType,
+            new List<string>(),
+            new List<object>(),
+            trendDataMetric == "browseCount" ? "浏览次数" : "总时长 (秒)",
+            "day"
+            );
+            return;
+        }
 
-    // Switch between tabs
-    private void SwitchTab(string tabName)
+        var timeAxis = dailyTrends.Select(d => d.Date).ToList();
+        var datasets = new List<object>();
+
+        if (trendDataMetric == "browseCount")
+        {
+            datasets.Add(new
+            {
+                label = "浏览次数",
+                data = dailyTrends.Select(d => d.BrowseCount).ToList(),
+                borderColor = "#4361ee",
+                backgroundColor = "#4361ee33",
+                borderWidth = 3,
+                tension = trendChartType == "line" ? 0.4 : 0
+            });
+        }
+        else
+        {
+            datasets.Add(new
+            {
+                label = "总时长 (秒)",
+                data = dailyTrends.Select(d => d.TotalDuration).ToList(),
+                borderColor = "#2a9d8f",
+                backgroundColor = "#2a9d8f33",
+                borderWidth = 3,
+                tension = trendChartType == "line" ? 0.4 : 0
+            });
+        }
+
+        var timeSpanDays = (endDate - startDate).Days;
+        var timeUnit = timeSpanDays > 60 ? "month" :
+        timeSpanDays > 30 ? "week" : "day";
+
+        await JSRuntime.InvokeVoidAsync(
+        "updateTrendChart",
+        trendChartType,
+        timeAxis,
+        datasets,
+        trendDataMetric == "browseCount" ? "浏览次数" : "总时长 (秒)",
+        timeUnit
+        );
+    }
+
+    // 切换标签
+    private async Task SwitchTab(string tabName)
     {
         activeTab = tabName;
-        pageNumber = 1; // Reset page number when switching tabs
+        pageNumber = 1;
 
         if (tabName == "browse")
         {
             browseRecords.Clear();
+            await FetchNewsBrowseRecords();
         }
         else if (tabName == "trend")
         {
+            // 切换到趋势页时自动加载数据
             dailyTrends.Clear();
+            await FetchUserDailyTrend();
         }
     }
-
     // Pagination controls
     private async Task PreviousPage()
     {

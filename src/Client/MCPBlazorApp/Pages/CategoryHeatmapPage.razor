@@ -13,7 +13,32 @@
 <div class="filters">
     <div class="filter-group">
         <label>类别：</label>
-        <input type="text" @bind="categoriesInput" placeholder="请输入类别，用逗号分隔" />
+        <div class="input-with-suggestions">
+            @if (string.IsNullOrEmpty(selectedCategory))
+            {
+                <input type="text" @bind="categoryInput" @oninput="HandleCategoryInput" placeholder="输入类别（如：sports）"
+                    @onfocus="ShowCategorySuggestions" @onblur="HideCategorySuggestions" />
+            }
+            else
+            {
+                <div class="selected-category-display">
+                    @selectedCategory
+                    <span class="clear-category" @onclick="ClearSelectedCategory">×</span>
+                </div>
+            }
+
+            @if (showCategorySuggestions && matchedCategories.Any())
+            {
+                <div class="suggestion-box">
+                    @foreach (var cat in matchedCategories)
+                    {
+                        <div class="suggestion-item" @onclick="() => SelectCategory(cat)">
+                            @cat
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
 
     <div class="filter-group">
@@ -97,15 +122,41 @@
 }
 
 @code {
-    private string categoriesInput = "entertainment"; // 默认类别
-    private DateTime startDate = new DateTime(2019, 6, 13); // 默认开始日期
-    private DateTime endDate = new DateTime(2019, 6, 30); // 默认结束日期
+    private string categoriesInput = "entertainment";
+    private DateTime startDate = new DateTime(2019, 6, 13); 
+    private DateTime endDate = new DateTime(2019, 6, 26); 
     private List<CategoryHeatmapDayDto> heatmapData = new List<CategoryHeatmapDayDto>();
     private bool isLoading = false;
     private bool showDataTable = false;
     private string chartType = "line";
     private string dataMetric = "browseCount";
     
+    // 类别选择相关状态
+    private string categoryInput = string.Empty;
+    private string? selectedCategory;
+    private List<string> matchedCategories = new();
+    private bool showCategorySuggestions = false;
+    private bool isCategorySelected = false;
+    private System.Timers.Timer? suggestionTimer;
+
+ protected override async Task OnInitializedAsync()
+    {
+        suggestionTimer = new System.Timers.Timer(300);
+        suggestionTimer.AutoReset = false;
+        suggestionTimer.Elapsed += async (sender, e) =>
+        {
+            if (!string.IsNullOrWhiteSpace(categoryInput))
+            {
+                await FetchCategorySuggestions();
+            }
+            await InvokeAsync(StateHasChanged);
+        };
+    }
+    public void Dispose()
+    {
+        suggestionTimer?.Dispose();
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -141,30 +192,46 @@
     // 获取类别热度图数据
     private async Task FetchCategoryHeatmap()
     {
+        if (string.IsNullOrEmpty(selectedCategory)) return;
+        
         try
         {
             isLoading = true;
             StateHasChanged();
-            
-            // 解析输入的类别
-            var categories = categoriesInput.Split(',').Select(c => c.Trim()).ToList();
 
-            var queryParams = new Dictionary<string, string?>
-            {
-                { "categories", string.Join(",", categories) },
-                { "startDate", startDate.ToString("yyyy-MM-dd") },
-                { "endDate", endDate.ToString("yyyy-MM-dd") }
-            };
+        // 只传递单个类别，将 selectedCategory 包装为一个列表
+        var queryParams = new Dictionary<string, string?>
+        {
+            { "categories", selectedCategory },  // 这里传递的是一个单一类别
+            { "startDate", startDate.ToString("yyyy-MM-dd") },
+            { "endDate", endDate.ToString("yyyy-MM-dd") }
+        };
 
-            var response = await Http.GetFromJsonAsync<CategoryHeatmapDto>(
-                $"http://localhost:5137/api/newscategory/category-heatmap?{await new FormUrlEncodedContent(queryParams).ReadAsStringAsync()}");
+        var response = await Http.GetFromJsonAsync<CategoryHeatmapDto>(
+            $"http://localhost:5137/api/newscategory/category-heatmap?{await new FormUrlEncodedContent(queryParams).ReadAsStringAsync()}");
 
-            if (response != null)
-            {
-                heatmapData = response.HeatmapData;
-                await UpdateChart();
-            }
+        if (response != null)
+        {
+            // 处理每个日期下的类别信息
+            heatmapData = response.HeatmapData
+                .Select(day => new CategoryHeatmapDayDto
+                {
+                    Date = day.Date,
+                    Categories = day.Categories
+                        .Where(c => c.Category == selectedCategory) // 只获取当前选中的类别
+                        .Select(c => new CategoryHeatItemDto
+                        {
+                            Category = c.Category,
+                            BrowseCount = c.BrowseCount,
+                            BrowseDuration = c.BrowseDuration
+                        })
+                        .ToList()
+                })
+                .ToList();
+
+            await UpdateChart();
         }
+    }
         catch (Exception ex)
         {
             Console.WriteLine($"加载热度数据出错: {ex.Message}");
@@ -176,8 +243,7 @@
             StateHasChanged();
         }
     }
-    
-    // 更新图表
+
     private async Task UpdateChart()
     {
         if (heatmapData != null && heatmapData.Any())
@@ -185,19 +251,14 @@
             // 准备时间轴数据 - 使用 Date 对象
             var timeAxis = heatmapData.Select(d => d.Date).ToList();
             
-            // 获取所有类别
-            var categories = heatmapData
-                .SelectMany(d => d.Categories)
-                .Select(c => c.Category)
-                .Distinct()
-                .ToList();
-            
+            var categories = new List<string> { selectedCategory }; // 只有一个类别
+
             var datasets = new List<object>();
-            
+
             foreach (var category in categories)
             {
                 var data = new List<object>();
-                
+
                 foreach (var day in heatmapData)
                 {
                     var categoryData = day.Categories.FirstOrDefault(c => c.Category == category);
@@ -219,11 +280,12 @@
                         data.Add(0);
                     }
                 }
-                
+
                 // 生成随机颜色
                 var color = $"#{Random.Shared.Next(0x1000000):X6}";
-                
-                datasets.Add(new {
+
+                datasets.Add(new
+                {
                     label = category,
                     data = data,
                     borderColor = color,
@@ -232,20 +294,20 @@
                     fill = false
                 });
             }
-            
+
             // 计算时间跨度（天数）
             var timeSpanDays = (endDate - startDate).Days;
-            
+
             // 根据时间跨度确定时间单位
-            var timeUnit = timeSpanDays > 60 ? "month" : 
-                          timeSpanDays > 30 ? "week" : 
-                          timeSpanDays > 14 ? "day" : 
-                          "day";
-            
+            var timeUnit = timeSpanDays > 60 ? "month" :
+                        timeSpanDays > 30 ? "week" :
+                        timeSpanDays > 14 ? "day" :
+                        "day";
+
             try
             {
                 // 调用JavaScript更新图表
-                await JSRuntime.InvokeVoidAsync("updateHeatmapChart", chartType, timeAxis, datasets, 
+                await JSRuntime.InvokeVoidAsync("updateHeatmapChart", chartType, timeAxis, datasets,
                     dataMetric == "browseCount" ? "浏览次数" : "浏览时长 (小时)",
                     timeUnit);
             }
@@ -256,6 +318,86 @@
         }
     }
     
+    // ===== 类别前缀匹配方法 =====
+    private void HandleCategoryInput(ChangeEventArgs e)
+    {
+        categoryInput = e.Value?.ToString() ?? string.Empty;
+        isCategorySelected = false;
+        suggestionTimer?.Stop();
+        suggestionTimer?.Start();
+    }
+
+    private void ShowCategorySuggestions()
+    {
+        if (string.IsNullOrEmpty(selectedCategory))
+        {
+            showCategorySuggestions = true;
+            if (!string.IsNullOrWhiteSpace(categoryInput))
+            {
+                _ = FetchCategorySuggestions();
+            }
+        }
+    }
+
+    private async void HideCategorySuggestions()
+    {
+        await Task.Delay(200);
+        if (!isCategorySelected)
+        {
+            showCategorySuggestions = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FetchCategorySuggestions()
+    {
+        if (string.IsNullOrWhiteSpace(categoryInput) || isCategorySelected)
+        {
+            matchedCategories.Clear();
+            return;
+        }
+
+        try
+        {
+            var prefix = categoryInput.Trim();
+            var response = await Http.GetAsync(
+                $"api/news/categories/match?prefix={Uri.EscapeDataString(prefix)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                matchedCategories = await response.Content.ReadFromJsonAsync<List<string>>() 
+                    ?? new List<string>();
+            }
+            else
+            {
+                matchedCategories = new List<string>();
+            }
+
+            showCategorySuggestions = matchedCategories.Any();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"获取类别建议失败: {ex.Message}");
+            matchedCategories = new List<string>();
+            showCategorySuggestions = false;
+        }
+    }
+
+    private void SelectCategory(string category)
+    {
+        selectedCategory = category;
+        categoryInput = string.Empty;
+        isCategorySelected = true;
+        showCategorySuggestions = false;
+        matchedCategories.Clear();
+    }
+    
+    private void ClearSelectedCategory()
+    {
+        selectedCategory = null;
+        isCategorySelected = false;
+    }
+
     // 切换数据表格显示
     private void ToggleDataTable()
     {
