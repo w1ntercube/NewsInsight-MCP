@@ -14,6 +14,7 @@
         <!-- 类别输入框 -->
         <div class="filter-group">
             <label>类别：</label>
+            <div class="input-with-suggestions">
             <input type="text" @bind="categoryInput" @oninput="HandleCategoryInput" placeholder="输入类别（如：sports）"
                 @onfocus="ShowCategorySuggestions" @onblur="HideCategorySuggestions" />
 
@@ -22,18 +23,19 @@
                 <div class="suggestion-box">
                     @foreach (var cat in matchedCategories)
                     {
-                        <div class="suggestion-item" @onclick="() => SelectCategory(cat)"
-                            @onmouseover="() => SetHoverCategory(cat)" @onmouseout="() => SetHoverCategory(null)">
-                            @cat
-                        </div>
+                            <div class="suggestion-item" @onclick="() => SelectCategory(cat)">
+                                @cat
+                            </div>
                     }
                 </div>
             }
+            </div>
         </div>
 
         <!-- 主题输入框 -->
         <div class="filter-group">
             <label>主题：</label>
+            <div class="input-with-suggestions">
             <input type="text" @bind="topicInput" @oninput="HandleTopicInput" placeholder="输入主题（如：basketball）"
                 @onfocus="ShowTopicSuggestions" @onblur="HideTopicSuggestions" />
 
@@ -42,13 +44,13 @@
                 <div class="suggestion-box">
                     @foreach (var topic in matchedTopics)
                     {
-                        <div class="suggestion-item" @onclick="() => SelectTopic(topic)"
-                            @onmouseover="() => SetHoverTopic(topic)" @onmouseout="() => SetHoverTopic(null)">
-                            @topic
-                        </div>
+                            <div class="suggestion-item" @onclick="() => SelectTopic(topic)">
+                                @topic
+                            </div>
                     }
                 </div>
             }
+            </div>
         </div>
 
         <div class="filter-group">
@@ -221,7 +223,7 @@
     // 防抖计时器
     private System.Timers.Timer? suggestionTimer;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         suggestionTimer = new System.Timers.Timer(300);
         suggestionTimer.AutoReset = false;
@@ -243,7 +245,7 @@
         };
 
         // 初始加载新闻
-        _ = FetchNews();
+        await ApplyFilters();
     }
 
     public void Dispose()
@@ -317,6 +319,10 @@
     // ===== 筛选相关方法 =====
     private async Task ApplyFilters()
     {
+        // 将输入框的值同步到筛选条件
+        category = string.IsNullOrWhiteSpace(categoryInput) ? null : categoryInput;
+        topic = string.IsNullOrWhiteSpace(topicInput) ? null : topicInput;
+
         pageNumber = 1; // 重置到第一页
         await FetchNews();
     }
@@ -364,7 +370,6 @@
             _ = FetchCategorySuggestions();
         }
     }
-
     private async void HideCategorySuggestions()
     {
         await Task.Delay(200);
@@ -409,18 +414,12 @@
         }
     }
 
-    private void SetHoverCategory(string? category)
+    private void SelectCategory(string selectedCategory)
     {
-        // 可选：添加悬停效果
-    }
-
-    private async Task SelectCategory(string selectedCategory)
-    {
-        category = selectedCategory;
         categoryInput = selectedCategory;
         isCategorySelected = true;
         showCategorySuggestions = false;
-        await ApplyFilters();
+        // 不再自动应用筛选，等待用户点击"应用筛选"按钮
     }
 
     // ===== 主题建议相关方法 =====
@@ -485,20 +484,14 @@
         }
     }
 
-    private void SetHoverTopic(string? topic)
+    private void SelectTopic(string selectedTopic)
     {
-        // 可选：添加悬停效果
-    }
-
-    private async Task SelectTopic(string selectedTopic)
-    {
-        topic = selectedTopic;
         topicInput = selectedTopic;
         isTopicSelected = true;
         showTopicSuggestions = false;
-        await ApplyFilters();
+        // 不再自动应用筛选，等待用户点击"应用筛选"按钮
     }
-
+    
     // ===== 新闻详情相关方法 =====
     private async Task ShowNewsDetail(int id)
     {

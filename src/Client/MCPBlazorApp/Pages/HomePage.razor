@@ -63,5 +63,6 @@
         NavigationManager.NavigateTo("/userinterestdistribution"); // Navigate to User Interest Distribution Page
     }
 
-    [Inject] private NavigationManager NavigationManager { get; set; }
+    [Inject]
+    public required NavigationManager NavigationManager { get; set; }
 }

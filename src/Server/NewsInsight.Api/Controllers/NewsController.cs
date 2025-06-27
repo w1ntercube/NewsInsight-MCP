@@ -32,8 +32,6 @@ namespace NewsInsight.Api.Controllers
             _logger = logger;
         }
 
-        // 一次性初始化机制
-        private static bool _isInitialized = false;
         private static readonly SemaphoreSlim _initLock = new SemaphoreSlim(1, 1);
 
         // 初始化逻辑
