@@ -73,17 +73,19 @@ NewsInsight/
 │   ├── Client/
 │   │   ├── MCPBlazorApp/             # Blazor WebAssembly 前端
 │   │   │   ├── Pages/
-│   │   │   ├── Shared/
 │   │   │   ├── wwwroot/
 │   │   │   ├── Program.cs
 │   │   │   └── MCPBlazorApp.csproj
-│   │   └── MCP-NewsInsight.Client/   # MCP客户端(可选)
 │   ├── Server/
 │   │   ├── NewsInsight.Api/          # 业务API层
 │   │   │   ├── Controllers/
 │   │   │   ├── Services/             # 业务逻辑服务
 │   │   │   ├── Data/
 │   │   │   │   └── NewsDbContext.cs  # 数据库上下文
+│   │   │   ├── Lib/
+│   │   │   │   └── NativePrefixMatcher.dll
+│   │   │   │   └── PrefixMatcherWrapper.dll
+│   │   │   ├── Middleware/
 │   │   │   ├── Properties/
 │   │   │   ├── appsettings.json
 │   │   │   ├── Program.cs
@@ -91,7 +93,7 @@ NewsInsight/
 │   │   └── MCP-NewsInsight.Server/   # MCP服务层
 │   │       ├── Tools/                # MCP工具实现
 │   │       │   └── NewsTools.cs
-│   │       ├── Services/             # 服务实现
+│   │       ├── Data
 │   │       ├── appsettings.json
 │   │       ├── Program.cs
 │   │       └── MCP-NewsInsight.Server.csproj
@@ -103,10 +105,8 @@ NewsInsight/
 │           │   ├── NewsCategory.cs
 │           │   └── UserInterest.cs
 │           ├── DTOs/                 # 数据传输对象
-│           ├── Requests/             # API请求模型
-│           ├── Responses/            # API响应模型
+│           ├── Utils/                # 工具类
 │           └── NewsInsight.Shared.Models.csproj
-├── tests/                            # 测试项目
 ├── docs/                             # 文档
 └── NewsInsight.sln                   # 解决方案文件
 
@@ -125,3 +125,68 @@ MCP（Model Context Protocol）在此架构中充当了客户端与服务器之�
 服务器根据请求调用与 LLM API 集成的工具来处理数据，可能包括新闻内容的分析、情感分析或生成新闻。
 
 然后，MCP 服务器会将处理后的结果返回给客户端。
+
+
+
+## 部署相关
+
+
+### 发布
+
+对三个项目都使用：
+``` bash
+dotnet publish -c Release -o ./publish
+```
+
+### 前端
+``` bash
+sudo vim /etc/nginx/nginx.conf
+....
+    server {
+        listen       80;
+        listen       [::]:80;
+        server_name  14.103.142.209;
+        root         /var/www/NewsInsight;
+
+        location / 
+        {
+                index index.html;
+                }
+
+        location /_framework/
+        {
+                root /var/www/NewsInsight;
+                }
+
+        location /css/ 
+        {
+                root /var/www/NewsInsight;
+                }
+
+        location /js/ 
+        {
+                root /var/www/NewsInsight;
+                } 
+
+        location /lib/
+        { 
+                root /var/www/NewsInsight;
+                }
+
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        error_page 404 /404.html;
+        location = /404.html 
+        {
+        }
+
+        error_page 500 502 503 504 /50x.html;
+        location = /50x.html 
+        {
+        }
+
+cd ./publish/wwwroot
+dotnet --server.urls=http://localhost:5245
+```

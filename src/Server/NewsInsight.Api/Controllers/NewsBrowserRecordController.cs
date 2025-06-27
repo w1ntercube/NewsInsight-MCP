@@ -54,8 +54,8 @@ namespace NewsInsight.Api.Controllers
                     NewsId = r.NewsId,
                     StartTime = DateTimeUtils.ConvertFromUnixTimestamp(r.StartTs),
                     Duration = r.Duration,
-                    NewsHeadline = r.News.Headline,
-                    NewsCategory = r.News.Category
+                    NewsHeadline = r.News == null ? "unknown" : r.News.Headline, 
+                    NewsCategory = r.News == null ? "unknown" : r.News.Category
                 })
                 .ToListAsync();
 
