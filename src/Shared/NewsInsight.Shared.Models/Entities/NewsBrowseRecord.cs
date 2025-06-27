@@ -22,6 +22,7 @@ namespace NewsInsight.Api.Models
         [Column("start_day")]
         public int StartDay { get; set; }
 
-        public News News { get; set; }
+        [Required]
+        public News? News { get; set; }
     }
 }

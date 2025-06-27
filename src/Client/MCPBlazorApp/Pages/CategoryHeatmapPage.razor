@@ -98,14 +98,17 @@
             <tbody>
                 @foreach (var day in heatmapData)
                 {
-                    @foreach (var category in day.Categories)
+                    @if (day.Categories != null && day.Categories.Any())
                     {
-                        <tr>
-                            <td>@day.Date.ToString("yyyy-MM-dd")</td>
-                            <td>@category.Category</td>
-                            <td>@category.BrowseCount.ToString("N0")</td>
-                            <td>@FormatDuration(category.BrowseDuration)</td>
-                        </tr>
+                        @foreach (var category in day.Categories)
+                        {
+                            <tr>
+                                <td>@day.Date.ToString("yyyy-MM-dd")</td>
+                                <td>@category.Category</td> 
+                                <td>@category.BrowseCount.ToString("N0")</td>
+                                <td>@FormatDuration(category.BrowseDuration)</td>
+                            </tr>
+                        }
                     }
                 }
             </tbody>
@@ -122,7 +125,6 @@
 }
 
 @code {
-    private string categoriesInput = "entertainment";
     private DateTime startDate = new DateTime(2019, 6, 13); 
     private DateTime endDate = new DateTime(2019, 6, 26); 
     private List<CategoryHeatmapDayDto> heatmapData = new List<CategoryHeatmapDayDto>();
@@ -139,19 +141,23 @@
     private bool isCategorySelected = false;
     private System.Timers.Timer? suggestionTimer;
 
- protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         suggestionTimer = new System.Timers.Timer(300);
         suggestionTimer.AutoReset = false;
+
         suggestionTimer.Elapsed += async (sender, e) =>
         {
             if (!string.IsNullOrWhiteSpace(categoryInput))
             {
                 await FetchCategorySuggestions();
+                await InvokeAsync(StateHasChanged);
             }
-            await InvokeAsync(StateHasChanged);
         };
+
+        return Task.CompletedTask; // 显式返回已完成的任务
     }
+
     public void Dispose()
     {
         suggestionTimer?.Dispose();
@@ -213,23 +219,22 @@
         if (response != null)
         {
             // 处理每个日期下的类别信息
-            heatmapData = response.HeatmapData
+                heatmapData = response?.HeatmapData?.Where(day => day.Categories != null) // 确保 response 和 day.Categories 不为 null
                 .Select(day => new CategoryHeatmapDayDto
                 {
                     Date = day.Date,
-                    Categories = day.Categories
-                        .Where(c => c.Category == selectedCategory) // 只获取当前选中的类别
-                        .Select(c => new CategoryHeatItemDto
-                        {
-                            Category = c.Category,
-                            BrowseCount = c.BrowseCount,
-                            BrowseDuration = c.BrowseDuration
-                        })
-                        .ToList()
+                    Categories = day.Categories?.Where(c => c.Category == selectedCategory) // 确保 Categories 不为 null
+                .Select(c => new CategoryHeatItemDto
+                {
+                    Category = c.Category,
+                    BrowseCount = c.BrowseCount,
+                    BrowseDuration = c.BrowseDuration
                 })
-                .ToList();
+                .ToList() ?? new List<CategoryHeatItemDto>() // 如果 Categories 为 null，返回一个空列表
+                })
+                .ToList() ?? new List<CategoryHeatmapDayDto>(); // 如果 HeatmapData 为 null，返回一个空列表
 
-            await UpdateChart();
+                await UpdateChart();
         }
     }
         catch (Exception ex)
@@ -251,7 +256,7 @@
             // 准备时间轴数据 - 使用 Date 对象
             var timeAxis = heatmapData.Select(d => d.Date).ToList();
             
-            var categories = new List<string> { selectedCategory }; // 只有一个类别
+            var categories = new List<string> { selectedCategory ?? string.Empty }; // 只有一个类别
 
             var datasets = new List<object>();
 
@@ -261,8 +266,8 @@
 
                 foreach (var day in heatmapData)
                 {
-                    var categoryData = day.Categories.FirstOrDefault(c => c.Category == category);
-                    
+                    var categoryData = day.Categories?.FirstOrDefault(c => c.Category == category); // 使用 ? 确保 day.Categories 不为 null
+
                     if (categoryData != null)
                     {
                         if (dataMetric == "browseCount")

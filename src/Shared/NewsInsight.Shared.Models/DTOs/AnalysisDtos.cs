@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace NewsInsight.Shared.Models.DTOs
 {
     // 通用分页响应
@@ -32,7 +34,7 @@ namespace NewsInsight.Shared.Models.DTOs
         public string Topic { get; set; } = string.Empty;
         public DateTime ReleasedTime { get; set; }
         public int BrowseCount { get; set; }
-        public string Content { get; set; }
+        public string? Content { get; set; }
     }
 
     // 用户浏览记录 DTO
@@ -143,19 +145,20 @@ namespace NewsInsight.Shared.Models.DTOs
     {
         public DateTime StartDate { get; set; } // 查询的开始日期
         public DateTime EndDate { get; set; } // 查询的结束日期
-        public List<CategoryHeatmapDayDto> HeatmapData { get; set; } // 按日期分组的类别热度数据
+        public List<CategoryHeatmapDayDto>? HeatmapData { get; set; } // 按日期分组的类别热度数据
     }
 
     public class CategoryHeatmapDayDto
     {
+        [Required]
         public DateTime Date { get; set; } // 每个日期
-        public List<CategoryHeatItemDto> Categories { get; set; } // 每个日期下的类别数据
+        [Required]
+        public List<CategoryHeatItemDto>? Categories { get; set; } // 每个日期下的类别数据
     }
 
     public class CategoryHeatItemDto
     {
-        
-        public string Category { get; set; } // 类别名称
+        public string? Category { get; set; } // 类别名称
         public int BrowseCount { get; set; } // 浏览次数
         public int BrowseDuration { get; set; } // 浏览时长
     }
