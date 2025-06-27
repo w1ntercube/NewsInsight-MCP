@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @using NewsInsight.Shared.Models.DTOs
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <h3 class="page-title">类别热度分析</h3>
 
@@ -30,12 +31,37 @@
     </div>
 </div>
 
-@if (heatmapData != null && heatmapData.Any())
-{
-    <div class="heatmap-result">
-        <h4>从 @startDate 到 @endDate 的类别热度图</h4>
+<!-- 图表容器 - 添加了 compact 类 -->
+<div class="chart-container compact">
+    <div class="chart-controls">
+        <label>图表类型：</label>
+        <select @bind="chartType">
+            <option value="line">折线图</option>
+            <option value="bar">柱状图</option>
+        </select>
 
-        <table class="heatmap-table">
+        <label>数据指标：</label>
+        <select @bind="dataMetric">
+            <option value="browseCount">浏览次数</option>
+            <option value="browseDuration">浏览时长</option>
+        </select>
+
+        <button class="toggle-button" @onclick="ToggleDataTable">@(showDataTable? "隐藏数据表格" : "显示数据表格")</button>
+    </div>
+
+    <!-- 添加了紧凑型图表容器 -->
+    <div class="chart-wrapper">
+        <canvas id="heatmapChart" class="heatmap-chart compact"></canvas>
+    </div>
+</div>
+
+<!-- 数据表格 -->
+@if (showDataTable && heatmapData != null && heatmapData.Any())
+{
+    <div class="data-table-container">
+        <h4>从 @startDate.ToString("yyyy-MM-dd") 到 @endDate.ToString("yyyy-MM-dd") 的类别热度数据</h4>
+
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>日期</th>
@@ -52,8 +78,8 @@
                         <tr>
                             <td>@day.Date.ToString("yyyy-MM-dd")</td>
                             <td>@category.Category</td>
-                            <td>@category.BrowseCount</td>
-                            <td>@category.BrowseDuration</td>
+                            <td>@category.BrowseCount.ToString("N0")</td>
+                            <td>@FormatDuration(category.BrowseDuration)</td>
                         </tr>
                     }
                 }
@@ -62,9 +88,12 @@
     </div>
 }
 
-@if (heatmapData == null || !heatmapData.Any())
+@if (isLoading)
 {
-    <p>未找到数据，请尝试不同的类别或日期。</p>
+    <div class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>正在加载数据...</p>
+    </div>
 }
 
 @code {
@@ -72,12 +101,44 @@
     private DateTime startDate = new DateTime(2019, 6, 13); // 默认开始日期
     private DateTime endDate = new DateTime(2019, 6, 30); // 默认结束日期
     private List<CategoryHeatmapDayDto> heatmapData = new List<CategoryHeatmapDayDto>();
-
+    private bool isLoading = false;
+    private bool showDataTable = false;
+    private string chartType = "line";
+    private string dataMetric = "browseCount";
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // 直接调用全局函数
+            await JSRuntime.InvokeVoidAsync("initializeHeatmapChart");
+        }
+    }
+    
+    // 格式化浏览时长
+    private string FormatDuration(int seconds)
+    {
+        if (seconds < 60) return $"{seconds}秒";
+        
+        int minutes = seconds / 60;
+        int remainingSeconds = seconds % 60;
+        
+        if (minutes < 60) return $"{minutes}分{remainingSeconds}秒";
+        
+        int hours = minutes / 60;
+        int remainingMinutes = minutes % 60;
+        
+        return $"{hours}小时{remainingMinutes}分{remainingSeconds}秒";
+    }
+    
     // 获取类别热度图数据
     private async Task FetchCategoryHeatmap()
     {
         try
         {
+            isLoading = true;
+            StateHasChanged();
+            
             // 解析输入的类别
             var categories = categoriesInput.Split(',').Select(c => c.Trim()).ToList();
 
@@ -94,6 +155,7 @@
             if (response != null)
             {
                 heatmapData = response.HeatmapData;
+                await UpdateChart();
             }
         }
         catch (Exception ex)
@@ -101,8 +163,79 @@
             Console.WriteLine($"Error fetching heatmap data: {ex.Message}");
             heatmapData = new List<CategoryHeatmapDayDto>();
         }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
-
+    
+    // 更新图表
+    private async Task UpdateChart()
+    {
+        if (heatmapData != null && heatmapData.Any())
+        {
+            var labels = heatmapData.Select(d => d.Date.ToString("MM-dd")).ToList();
+            var datasets = new List<object>();
+            
+            // 获取所有类别
+            var categories = heatmapData
+                .SelectMany(d => d.Categories)
+                .Select(c => c.Category)
+                .Distinct()
+                .ToList();
+            
+            foreach (var category in categories)
+            {
+                var data = new List<object>();
+                
+                foreach (var day in heatmapData)
+                {
+                    var categoryData = day.Categories.FirstOrDefault(c => c.Category == category);
+                    
+                    if (categoryData != null)
+                    {
+                        if (dataMetric == "browseCount")
+                        {
+                            data.Add(categoryData.BrowseCount);
+                        }
+                        else
+                        {
+                            // 转换为小时
+                            data.Add(Math.Round(categoryData.BrowseDuration / 3600.0, 1));
+                        }
+                    }
+                    else
+                    {
+                        data.Add(0);
+                    }
+                }
+                
+                // 生成随机颜色
+                var color = $"#{Random.Shared.Next(0x1000000):X6}";
+                
+                datasets.Add(new {
+                    label = category,
+                    data = data,
+                    borderColor = color,
+                    backgroundColor = $"{color}33",
+                    tension = 0.4,
+                    fill = false
+                });
+            }
+            
+            // 直接调用全局函数
+            await JSRuntime.InvokeVoidAsync("updateHeatmapChart", chartType, labels, datasets, 
+                dataMetric == "browseCount" ? "浏览次数" : "浏览时长 (小时)");
+        }
+    }
+    
+    // 切换数据表格显示
+    private void ToggleDataTable()
+    {
+        showDataTable = !showDataTable;
+    }
+    
     // 返回主页
     private void GoBackToHomePage()
     {
