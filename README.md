@@ -16,6 +16,52 @@
 |  **数据层** |                MySQL 8.0 · 分布式表设计               |
 | **智能服务** |           MCP 协议 · VS Code Copilot 集成           |
 
+## 项目架构
+``` bash
+NewsInsight/
+├── src/
+│   ├── Client/
+│   │   ├── MCPBlazorApp/             # Blazor WebAssembly 前端
+│   │   │   ├── Pages/
+│   │   │   ├── wwwroot/
+│   │   │   ├── Program.cs
+│   │   │   └── MCPBlazorApp.csproj
+│   ├── Server/
+│   │   ├── NewsInsight.Api/          # 业务API层
+│   │   │   ├── Controllers/
+│   │   │   ├── Services/             # 业务逻辑服务
+│   │   │   ├── Data/
+│   │   │   │   └── NewsDbContext.cs  # 数据库上下文
+│   │   │   ├── Lib/
+│   │   │   │   └── NativePrefixMatcher.dll
+│   │   │   │   └── PrefixMatcherWrapper.dll
+│   │   │   ├── Middleware/
+│   │   │   ├── Properties/
+│   │   │   ├── appsettings.json
+│   │   │   ├── Program.cs
+│   │   │   └── NewsInsight.Api.csproj
+│   │   └── MCP-NewsInsight.Server/   # MCP服务层
+│   │       ├── Tools/                # MCP工具实现
+│   │       │   └── NewsTools.cs
+│   │       ├── Data
+│   │       ├── appsettings.json
+│   │       ├── Program.cs
+│   │       └── MCP-NewsInsight.Server.csproj
+│   └── Shared/
+│       └── NewsInsight.Shared.Models/ # 共享模型
+│           ├── Entities/             # 数据库实体
+│           │   ├── News.cs
+│           │   ├── NewsBrowseRecord.cs
+│           │   ├── NewsCategory.cs
+│           │   └── UserInterest.cs
+│           ├── DTOs/                 # 数据传输对象
+│           ├── Utils/                # 工具类
+│           └── NewsInsight.Shared.Models.csproj
+├── docs                             # 文档
+├── README.md                         # 项目说明文档
+└── NewsInsight.sln                   # 解决方案文件
+```
+
 ## 💡 核心功能
 
 ### 📑 新闻内容管理
