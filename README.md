@@ -58,7 +58,7 @@ graph TD
 * **分层服务结构**
 
 <div align="center">
-  <img src="./images/架构图.png" width="500"/>
+  <img src="./images/MCPServer/架构图.png" width="500"/>
 </div>
 
   *本项目数据库位于云端ECS，可通过 Web APIs 与外部数据源交互，实现远程智能问答。*
@@ -77,8 +77,8 @@ graph TD
 ### 👀 运行效果截图
 
 <div align="center">
-  <img src="./images/MCPServer/MCPServer运行截图1.png" width="400"/>
-  <img src="./images/MCPServer/MCPServer运行截图2.png" width="400"/>
+  <img src="./images/MCPServer/MCPServer运行截图1.png" />
+  <img src="./images/MCPServer/MCPServer运行截图2.png" />
 </div>
 
 ## 🛠️ 部署说明
